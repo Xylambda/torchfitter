@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 
+## [0.2.0] - 2021-01-07
+
+### Added
+
+- Added badges from [shield.io](https://shields.io/)
+
+
 ## [0.1.1] - 2021-01-07
 
 ### Added

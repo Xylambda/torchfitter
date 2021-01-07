@@ -3,6 +3,11 @@
   <img src="img/logo.png" width="400">
 </p>
 
+![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/Xylambda/torchfitter?label=VERSION&style=for-the-badge)
+![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/Xylambda/torchfitter?style=for-the-badge)
+![GitHub last commit](https://img.shields.io/github/last-commit/Xylambda/torchfitter?style=for-the-badge)
+![GitHub issues](https://img.shields.io/github/issues/Xylambda/torchfitter?style=for-the-badge)
+
 `TorchFitter` is a simple library I created to ease the training of PyTorch
 models. It features a class called `Trainer` that includes the basic 
 functionality to fit models in a Keras-like style.
