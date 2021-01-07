@@ -54,7 +54,7 @@ import torch.optim as optim
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 model = nn.Linear(in_features=1, out_features=1)
-model.top(device)
+model.to(device)
 
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters())
