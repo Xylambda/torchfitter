@@ -21,6 +21,8 @@ class Trainer:
     logger_kwards : dict
         Args for logger. Currently, only 'show' and 'update_step' are available
         parameters.
+    regularizer : torchfitter.regularizer, optional, default: None
+        Procedure to apply penalties to the loss function.
     device : str, optional, default: None
         Device to perform computations. If None, the Trainer will automatically
         select the device.
@@ -34,16 +36,18 @@ class Trainer:
     
     """
     def __init__(
-        self, 
-        model, 
-        criterion, 
-        optimizer, 
-        logger_kwargs, 
+        self,
+        model,
+        criterion,
+        optimizer,
+        logger_kwargs,
+        regularizer=None,
         device=None
     ):
         self.model = model
         self.criterion = criterion
         self.optimizer = optimizer
+        self.regularizer=regularizer
         self.logger_kwargs = logger_kwargs
         self.device = self._get_device(device)
         
@@ -179,7 +183,9 @@ class Trainer:
             warnings.warn(msg)
 
         # apply regularization if any
-        # loss += penalty.item()
+        if self.regularizer is not None:
+            penalty = self.regularizer(self.model.named_parameters())
+            loss += penalty.item()
             
         return loss
 
