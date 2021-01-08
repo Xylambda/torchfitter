@@ -89,7 +89,7 @@ val_loss = trainer.val_loss_
 
 ## About regularization
 `TorchFitter` includes regularization algorithms but you can also create your
-own procedures. To create your own algoritmhs you just:
+own procedures. To create your own algorithms you just:
 1. Inherit from `RegularizerBase` and call the `super` operator appropiately.
 2. Implement the procedure in the `_compute_penalty` method.
 
