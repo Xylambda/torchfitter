@@ -7,6 +7,8 @@ from pathlib import Path
 from torch.utils.data import DataLoader
 from torchfitter.trainer import Trainer
 from torchfitter.utils import DataWrapper
+from torchfitter.testing import change_model_params
+
 from sklearn.model_selection import train_test_split
 
 torch.manual_seed(0)
@@ -17,15 +19,25 @@ DATA_PATH = _path / "data"
 
 
 def test_trainer():
+    # we create a model and set known params
     model = nn.Linear(in_features=1, out_features=1)
+    change_model_params(
+        model, 
+        weights=torch.Tensor([[-0.065]]), 
+        biases=torch.Tensor([0.5634])
+    )
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model.to(device)
+    
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters())
 
     trainer = Trainer(
-        model=model, 
+        model=model,
         criterion=criterion,
-        optimizer=optimizer, 
-        logger_kwargs={'show': True, 'update_step':20}
+        optimizer=optimizer,
+        logger_kwargs={'show': True, 'update_step':20},
+        device=device
     )
     
     X = np.load(DATA_PATH / "features.npy")
@@ -57,31 +69,35 @@ def test_trainer():
     # fitting process
     trainer.fit(train_loader, val_loader, epochs=10)
 
-    expected_train_loss = np.array([
-        7215.00830078125,
-        7211.41943359375,
-        7207.84619140625,
-        7204.2802734375,
-        7200.7197265625,
-        7197.1630859375,
-        7193.60986328125,
-        7190.06005859375,
-        7186.5126953125,
-        7182.96826171875
-    ])
+    expected_train_loss = np.array(
+        [
+            7225.11279296875,
+            7221.5205078125,
+            7217.94189453125,
+            7214.37158203125,
+            7210.80712890625,
+            7207.24609375,
+            7203.68896484375,
+            7200.134765625,
+            7196.58251953125,
+            7193.03369140625
+        ]
+    )
 
-    expected_val_loss = np.array([
-        8710.00390625,
-        8705.8271484375,
-        8701.6640625,
-        8697.509765625,
-        8693.359375,
-        8689.2138671875,
-        8685.0732421875,
-        8680.9345703125,
-        8676.798828125,
-        8672.6650390625
-    ])
+    expected_val_loss = np.array(
+        [
+            8721.7216796875,
+            8717.5390625,
+            8713.3740234375,
+            8709.2138671875,
+            8705.060546875,
+            8700.9111328125,
+            8696.765625,
+            8692.6220703125,
+            8688.4814453125,
+            8684.34375
+        ]
+    )
 
     obtained_train_loss = np.array(trainer.train_loss_)
     obtained_val_loss = np.array(trainer.val_loss_)

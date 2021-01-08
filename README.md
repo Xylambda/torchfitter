@@ -32,7 +32,7 @@ pip install -e torchfitter/. -r torchfitter/requirements-dev.txt
 ```
 
 ## Tests
-To run test, you must install the library as a `developer`.
+To run the tests you must install the library as a `developer`.
 ```bash
 cd torchfitter/
 pytest -v tests/
@@ -49,10 +49,13 @@ val_loader = DataLoader(...)
 ```
 
 Then, create the optimizer and the loss criterion as usual. Pass them to the
-trainer along the PyTorch model
+trainer along the PyTorch model. You can also add a regularization procedure if 
+you need/want to do it.
 ```python
 import torch.nn as nn
 import torch.optim as optim
+from torchfitter.trainer import Trainer
+from torchfitter.regularization import L1Regularization
 
 
 # get device
@@ -63,12 +66,14 @@ model.to(device)
 
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters())
+regularizer = L1Regularization(regularization_rate=0.01, biases=False)
 
 trainer = Trainer(
     model=model, 
     criterion=criterion,
     optimizer=optimizer, 
     logger_kwargs={'show': True, 'update_step':20},
+    regularizer=regularizer,
     device=device
 )
 
@@ -80,6 +85,36 @@ After the process ends, you can access the validation and train losses:
 ```python
 train_loss = trainer.train_loss_
 val_loss = trainer.val_loss_
+```
+
+## About regularization
+`TorchFitter` includes regularization algorithms but you can also create your
+own procedures. To create your own algorithms you just:
+1. Inherit from `RegularizerBase` and call the `super` operator appropiately.
+2. Implement the procedure in the `_compute_penalty` method.
+
+Here's an example implementing L1 from scratch:
+
+```python
+import torch
+from torchfitter.base import RegularizerBase
+
+
+class L1Regularization(RegularizerBase):
+    def __init__(self, regularization_rate, biases=False):
+        super(L1Regularization, self).__init__(regularization_rate, biases)
+
+    def _compute_penalty(self, named_parameters):
+        # Initialize with tensor, cannot be scalar
+        penalty_term = torch.zeros(1, 1, requires_grad=True)
+
+        for name, param in named_parameters:
+            if not self.biases and name.endswith("bias"):
+                pass
+            else:
+                penalty_term = penalty_term + param.norm(p=1)
+
+        return self.rate * penalty_term
 ```
 
 ## FAQ
@@ -97,7 +132,6 @@ Thank you! Do not hesitate to open an issue and I'll do my best to answer you.
 
 ## TODO
 * Add support for EarlyStopping.
-* Add support for ElasticNet and L1 regularization.
 * Add support for computing metrics in the training loop.
 * Improve `logger_kwargs` management.
 
