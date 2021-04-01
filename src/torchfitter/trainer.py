@@ -4,6 +4,10 @@ import torch
 import logging
 import warnings
 
+from torchfitter.utils import to_device
+from torchfitter.conventions import ParamsDict
+from torchfitter.callbacks.base import CallbackHandler
+
 
 class Trainer:
     """Trainer
@@ -18,14 +22,13 @@ class Trainer:
         Loss function criterion.
     optimizer : torch.optim
         Optimizer to perform the parameters update.
-    logger_kwards : dict
-        Args for logger. Currently, only 'show' and 'update_step' are available
-        parameters.
     regularizer : torchfitter.regularizer, optional, default: None
         Procedure to apply penalties to the loss function.
     device : str, optional, default: None
         Device to perform computations. If None, the Trainer will automatically
         select the device.
+    callbacks : list of torchfitter.callback.Callback
+        Callbacks that allow interaction.
         
     Attributes
     ----------
@@ -33,6 +36,10 @@ class Trainer:
         Training losses for each epoch.
     val_loss_ : list
         Validation losses for each epoch.
+    callback_handler : torchfitter.callback.CallbackHandler
+        Handles the passed callbacks.
+    params_dict : dict
+        Contains training params.
     
     """
     def __init__(
@@ -40,15 +47,14 @@ class Trainer:
         model,
         criterion,
         optimizer,
-        logger_kwargs,
         regularizer=None,
-        device=None
+        device=None,
+        callbacks=None
     ):
         self.model = model
         self.criterion = criterion
         self.optimizer = optimizer
         self.regularizer=regularizer
-        self.logger_kwargs = logger_kwargs
         self.device = self._get_device(device)
         
         # send model to device
@@ -57,6 +63,8 @@ class Trainer:
         # attributes        
         self.train_loss_ = []
         self.val_loss_ = []
+        self.callback_handler = CallbackHandler(callbacks_list=callbacks)
+        self.params_dict = self._initialize_params_dict()
 
         logging.basicConfig(level=logging.INFO)
         
@@ -78,63 +86,86 @@ class Trainer:
         # track total training time
         total_start_time = time.time()
 
+        self.callback_handler.on_fit_begin(self.params_dict)
+
         # ---- train process ----
         for epoch in range(epochs):
+            self._update_params_dict(
+                epoch_number=epoch,
+                total_epochs=epochs
+            )
+            self.callback_handler.on_epoch_start(self.params_dict)
+
             # track epoch time
             epoch_start_time = time.time()
 
             # train
+            self.callback_handler.on_train_batch_start(self.params_dict)
             tr_loss = self._train(train_loader)
-            
-            # validate
+            self.callback_handler.on_train_batch_end(self.params_dict)
+            self._update_params_dict(training_loss=tr_loss)
+
+            # validation
+            self.callback_handler.on_validation_batch_start(self.params_dict)
             val_loss = self._validate(val_loader)
-            
-            self.train_loss_.append(tr_loss)
-            self.val_loss_.append(val_loss)
+            self.callback_handler.on_validation_batch_end(self.params_dict)
+            self._update_params_dict(validation_loss=tr_loss)
+
+            self._update_history(train_loss=tr_loss, validation_loss=val_loss)
 
             epoch_time = time.time() - epoch_start_time
-            self._logger(
-                tr_loss, 
-                val_loss, 
-                epoch+1, 
-                epochs, 
-                epoch_time, 
-                **self.logger_kwargs
-            )
+            self._update_params_dict(epoch_time=epoch_time)
+
+            self.callback_handler.on_epoch_end(self.params_dict)
 
         total_time = time.time() - total_start_time
 
-        # final message
-        logging.info(
-            f"""End of training. Total time: {round(total_time, 5)} seconds"""
-        )
+        self._update_params_dict(total_time=total_time)
+        self.callback_handler.on_fit_end(self.params_dict)
         
-    
-    def _logger(
-        self, 
-        tr_loss, 
-        val_loss, 
-        epoch, 
-        epochs, 
-        epoch_time, 
-        show=True, 
-        update_step=20
-    ):
-        if show:
-            if epoch % update_step == 0 or epoch == 1:
-                # to satisfy pep8 common limit of characters
-                msg = f"Epoch {epoch}/{epochs} | Train loss: {tr_loss}" 
-                msg = f"{msg} | Validation loss: {val_loss}"
-                msg = f"{msg} | Time/epoch: {round(epoch_time, 5)} seconds"
+    def _update_params_dict(self, **kwargs):
+        """
 
-                logging.info(msg)
+        Parameters
+        ----------
+        kwargs : dict
+            Dictionary with keys to update.
+        """
+        for key, value in kwargs.items():
+            self.params_dict[key] = value
+
+    def _update_history(self, train_loss, validation_loss):
+        self.params_dict['history']['train_loss'].append(train_loss)
+        self.params_dict['history']['validation_loss'].append(validation_loss)
+
+    def _initialize_params_dict(self):
+        params_dict = dict(
+            training_loss=0,
+            validation_loss=0,
+            train_batch=None,
+            validation_batch=None,
+            epoch_time=0,
+            epoch_number=0,
+            total_epochs=None,
+            total_time=0,
+            model_state=self.model.state_dict(),
+            history=dict(
+                train_loss=[],
+                validation_loss=[]
+            )
+        )
+
+        return params_dict
     
     def _train(self, loader):
         self.model.train()
+
+        losses = [] # loss as mean of batch losses
         
         for features, labels in loader:
             # move to device
-            features, labels = self._to_device(features, labels, self.device)
+            features = to_device(features, self.device)
+            labels = to_device(labels, self.device)
             
             # forward pass
             out = self.model(features)
@@ -150,28 +181,28 @@ class Trainer:
             
             # parameters update
             self.optimizer.step()
-            
-        return loss.item()
-    
-    def _to_device(self, features, labels, device):
-        return features.to(device), labels.to(device)
+
+            losses.append(loss.item())
+        
+        return torch.Tensor(losses).mean().item()
     
     def _validate(self, loader):
         self.model.eval()
+
+        losses = [] # loss as mean of batch losses
         
         with torch.no_grad():
             for features, labels in loader:
                 # move to device
-                features, labels = self._to_device(
-                    features, 
-                    labels, 
-                    self.device
-                )
+                features = to_device(features, self.device)
+                labels = to_device(labels, self.device)
                 
                 out = self.model(features)
                 loss = self._compute_loss(out, labels)
+
+                losses.append(loss.item())
                 
-        return loss.item()
+        return torch.Tensor(losses).mean().item()
     
     def _compute_loss(self, real, target):
         try:

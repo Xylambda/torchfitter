@@ -1,6 +1,6 @@
 
 <p align="center">
-  <img src="img/logo.png" width="400">
+  <img src="img/logo.png" width="300">
 </p>
 
 ![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/Xylambda/torchfitter?label=VERSION&style=for-the-badge)
@@ -80,14 +80,8 @@ trainer = Trainer(
 trainer.fit(train_loader, val_loader, epochs=10)
 ```
 
-A logger will keep you up to date about the training process.
-After the process ends, you can access the validation and train losses:
-```python
-train_loss = trainer.train_loss_
-val_loss = trainer.val_loss_
-```
 
-## About regularization
+## Regularization
 `TorchFitter` includes regularization algorithms but you can also create your
 own procedures. To create your own algorithms you just:
 1. Inherit from `RegularizerBase` and call the `super` operator appropiately.
@@ -97,7 +91,7 @@ Here's an example implementing L1 from scratch:
 
 ```python
 import torch
-from torchfitter.base import RegularizerBase
+from torchfitter.regularization.base import RegularizerBase
 
 
 class L1Regularization(RegularizerBase):
@@ -117,6 +111,80 @@ class L1Regularization(RegularizerBase):
         return self.rate * penalty_term
 ```
 
+## Callbacks
+Callbacks allow you to interact with the model during the fitting process. They
+provide with different methods at different stages. To create a callback simply 
+extend the base class and fill the desired methods.
+
+```python
+from torchfitter.callbacks.base import Callback
+
+
+class CustomCallback(Callback):
+    def __init__(self):
+        super(CustomCallback, self).__init__()
+
+    def on_train_batch_start(self, params_dict):
+        # do stuff
+
+    def on_train_batch_end(self, params_dict):
+        # do stuff
+
+    def on_validation_batch_start(self, params_dict):
+        # do stuff
+
+    def on_validation_batch_end(self, params_dict):
+        # do stuff
+
+    def on_epoch_start(self, params_dict):
+        # do stuff
+
+    def on_epoch_end(self, params_dict):
+        # do stuff
+
+    def on_fit_begin(self, params_dict):
+        # do stuff
+
+    def on_fit_end(self, params_dict):
+        # do stuff
+```
+
+Each method receives `params_dict`, which is a dictionary object containing the
+following params:
+* **training_loss** the current training loss.
+* **validation_loss** the current validation loss.
+* **train_batch** the current training batch.
+* **validation_batch** the current validation batch.
+* **epoch_time** the time it took to compute the current epoch.
+
+Each epoch, all params are updated according to the training process. You can
+pretty much do anything you want with those params during the training process.
+
+
+## Custom fitting process
+The current Trainer design has been created to process a dataloader that
+returns 2 tensors: features and labels. Extending the Trainer class and
+rewriting the methods `_train` and `_validation` should allow you to create
+your own custom steps as long as they receive a dataloader and they return the
+loss value as a number.
+
+```python
+from torchfitter.trainer import Trainer
+
+
+class MyTrainer(Trainer):
+    def __init__(self, kwargs):
+        super(MyTrainer, self).__init__(**kwargs)
+
+    def _train(self, loader):
+        # ...
+        return loss.item()
+
+    def _validation(self, loader):
+        # ...
+        return loss.item()
+```
+
 ## FAQ
 * **Do you know Pytorch-Lightning?**
 
@@ -129,11 +197,6 @@ Because I think it enforces good ML practices that way.
 * **I have a suggestion/question**
 
 Thank you! Do not hesitate to open an issue and I'll do my best to answer you.
-
-## TODO
-* Add support for EarlyStopping.
-* Add support for computing metrics in the training loop.
-* Improve `logger_kwargs` management.
 
 ## CREDITS
 <div>Icons made by <a href="https://www.flaticon.com/authors/vignesh-oviyan" 

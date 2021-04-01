@@ -2,7 +2,8 @@ import torch
 import torch.nn as nn
 
 from torchfitter.regularization import (
-    L1Regularization, 
+    L1Regularization,
+    L2Regularization,
     ElasticNetRegularization
 )
 
@@ -20,6 +21,16 @@ change_model_params(model, weights, biases)
 
 def test_L1Regularization():
     regularizer = L1Regularization(regularization_rate=0.01, biases=False)
+    
+    obtained_term = regularizer(model.named_parameters()).item()
+    expected_term = 0.022014999762177467
+    
+    msg = "Error in L1 regularization penalty"
+    assert obtained_term == expected_term, msg
+
+
+def test_L2Regularization():
+    regularizer = L2Regularization(regularization_rate=0.01, biases=False)
     
     obtained_term = regularizer(model.named_parameters()).item()
     expected_term = 0.022014999762177467
