@@ -62,17 +62,3 @@ def numpy_to_torch(array, dtype):
         Torch tensor with the desired properties.
     """
     return getattr(torch.from_numpy(array), dtype)()
-
-
-def to_device(tensor, device):
-    """
-    Send the passed tensor to the given device.
-
-    Parameters
-    ----------
-    tensor : torch.Tensor
-        Tensor to move.
-    device : str
-        Device to move the tensor.
-    """
-    return tensor.to(device)

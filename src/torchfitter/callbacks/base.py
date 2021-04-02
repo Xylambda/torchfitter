@@ -92,7 +92,7 @@ class Callback:
         """
         pass
 
-    def on_fit_begin(self, params_dict):
+    def on_fit_start(self, params_dict):
         """Called at the start of the fitting process.
 
         Subclasses should override for any actions to run. The trainer expects
@@ -170,10 +170,10 @@ class CallbackHandler(Callback):
             for callback in self.callbacks_list:
                 callback.on_epoch_end(params_dict)
 
-    def on_fit_begin(self, params_dict):
+    def on_fit_start(self, params_dict):
         if self.handle_callbacks:
             for callback in self.callbacks_list:
-                callback.on_fit_begin(params_dict)
+                callback.on_fit_start(params_dict)
     
     def on_fit_end(self, params_dict):
         if self.handle_callbacks:

@@ -157,8 +157,9 @@ following params:
 * **validation_batch** the current validation batch.
 * **epoch_time** the time it took to compute the current epoch.
 
-Each epoch, all params are updated according to the training process. You can
-pretty much do anything you want with those params during the training process.
+Each epoch, all dynamic params are updated according to the training process. 
+You can pretty much do anything you want with those params during the training 
+process.
 
 
 ## Custom fitting process

@@ -1,12 +1,13 @@
-""" This class wraps functionality to train PyTorch models """
 import time
 import torch
 import logging
 import warnings
+import statistics
 
-from torchfitter.utils import to_device
+from tqdm.auto import tqdm
 from torchfitter.conventions import ParamsDict
 from torchfitter.callbacks.base import CallbackHandler
+from torchfitter.trainer._wrapper import ModelWrapper
 
 
 class Trainer:
@@ -51,14 +52,11 @@ class Trainer:
         device=None,
         callbacks=None
     ):
-        self.model = model
+        self.model = ModelWrapper(model=model, device=device)
         self.criterion = criterion
         self.optimizer = optimizer
         self.regularizer=regularizer
         self.device = self._get_device(device)
-        
-        # send model to device
-        self.model.to(self.device)
 
         # attributes        
         self.train_loss_ = []
@@ -86,10 +84,10 @@ class Trainer:
         # track total training time
         total_start_time = time.time()
 
-        self.callback_handler.on_fit_begin(self.params_dict)
+        self.callback_handler.on_fit_start(self.params_dict)
 
         # ---- train process ----
-        for epoch in range(epochs):
+        for epoch in tqdm(range(epochs), ascii=True):
             self._update_params_dict(
                 epoch_number=epoch,
                 total_epochs=epochs
@@ -117,6 +115,9 @@ class Trainer:
             self._update_params_dict(epoch_time=epoch_time)
 
             self.callback_handler.on_epoch_end(self.params_dict)
+
+            if self.model.stop_training: # early stopping callback
+                break
 
         total_time = time.time() - total_start_time
 
@@ -148,7 +149,8 @@ class Trainer:
             epoch_number=0,
             total_epochs=None,
             total_time=0,
-            model_state=self.model.state_dict(),
+            device=self.device,
+            model=self.model,
             history=dict(
                 train_loss=[],
                 validation_loss=[]
@@ -164,9 +166,9 @@ class Trainer:
         
         for features, labels in loader:
             # move to device
-            features = to_device(features, self.device)
-            labels = to_device(labels, self.device)
-            
+            features.to(self.device)
+            labels.to(self.device)
+
             # forward pass
             out = self.model(features)
             
@@ -184,7 +186,7 @@ class Trainer:
 
             losses.append(loss.item())
         
-        return torch.Tensor(losses).mean().item()
+        return statistics.mean(losses)
     
     def _validate(self, loader):
         self.model.eval()
@@ -194,15 +196,15 @@ class Trainer:
         with torch.no_grad():
             for features, labels in loader:
                 # move to device
-                features = to_device(features, self.device)
-                labels = to_device(labels, self.device)
+                features.to(self.device)
+                labels.to(self.device)
                 
                 out = self.model(features)
                 loss = self._compute_loss(out, labels)
 
                 losses.append(loss.item())
                 
-        return torch.Tensor(losses).mean().item()
+        return statistics.mean(losses)
     
     def _compute_loss(self, real, target):
         try:
