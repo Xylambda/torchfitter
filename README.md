@@ -50,19 +50,25 @@ val_loader = DataLoader(...)
 
 Then, create the optimizer and the loss criterion as usual. Pass them to the
 trainer along the PyTorch model. You can also add a regularization procedure if 
-you need/want to do it.
+you need/want to do it. The same goes for callbacks: create the desired
+callbacks and pass them to the trainer as a list.
 ```python
 import torch.nn as nn
 import torch.optim as optim
 from torchfitter.trainer import Trainer
 from torchfitter.regularization import L1Regularization
+from torchfitter.callbacks import LoggerCallback, EarlyStopping
 
+
+# callbacks
+logger = LoggerCallback(update_step=50)
+early_stopping = EarlyStopping(patience=50, load_best=True)
 
 # get device
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 model = nn.Linear(in_features=1, out_features=1)
-model.to(device)
+model.to(device) # do this before declaring the optimizer
 
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters())
@@ -72,9 +78,9 @@ trainer = Trainer(
     model=model, 
     criterion=criterion,
     optimizer=optimizer, 
-    logger_kwargs={'show': True, 'update_step':20},
     regularizer=regularizer,
-    device=device
+    device=device,
+    callbacks=[logger, early_stopping]
 )
 
 trainer.fit(train_loader, val_loader, epochs=10)
@@ -117,36 +123,18 @@ provide with different methods at different stages. To create a callback simply
 extend the base class and fill the desired methods.
 
 ```python
+import torch
 from torchfitter.callbacks.base import Callback
 
 
-class CustomCallback(Callback):
+class ModelSaver(Callback):
     def __init__(self):
-        super(CustomCallback, self).__init__()
-
-    def on_train_batch_start(self, params_dict):
-        # do stuff
-
-    def on_train_batch_end(self, params_dict):
-        # do stuff
-
-    def on_validation_batch_start(self, params_dict):
-        # do stuff
-
-    def on_validation_batch_end(self, params_dict):
-        # do stuff
-
-    def on_epoch_start(self, params_dict):
-        # do stuff
+        super(ModelSaver, self).__init__()
 
     def on_epoch_end(self, params_dict):
-        # do stuff
-
-    def on_fit_start(self, params_dict):
-        # do stuff
-
-    def on_fit_end(self, params_dict):
-        # do stuff
+        epoch = params_dict['epoch_number']
+        model = params_dict['model']
+        torch.save(model.state_dict(), f"model_{epoch}")
 ```
 
 Each method receives `params_dict`, which is a dictionary object containing the
@@ -205,8 +193,6 @@ Because I think it enforces good ML practices that way.
 Thank you! Do not hesitate to open an issue and I'll do my best to answer you.
 
 ## CREDITS
-* <div>Icons made by <a href="https://www.flaticon.com/authors/vignesh-oviyan" 
-title="Vignesh Oviyan">Vignesh Oviyan</a> from <a href="https://www.flaticon.com/" 
-title="Flaticon">www.flaticon.com</a></div>
+* <div>Icons made by <a href="https://www.flaticon.com/authors/vignesh-oviyan" title="Vignesh Oviyan">Vignesh Oviyan</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></div>
 
 * [Keras API](https://keras.io/api/).

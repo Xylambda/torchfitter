@@ -14,10 +14,13 @@ class EarlyStopping(Callback):
     patience : int, optional, default: 50
         Number of epochs to wait after min has been reached. After 'patience'
         number of epochs without improvemente, the training stops.
+    load_best : bool, optional, deafult: True
+        Whether to load the best observed parameters (True) or not (False).
     """
-    def __init__(self, patience=50):
+    def __init__(self, patience=50, load_best=True):
         super(EarlyStopping, self).__init__()
         self.patience = patience
+        self.load_best = load_best
 
     def _save_params(self, parameters):
         if self.path is not None:
@@ -47,7 +50,9 @@ class EarlyStopping(Callback):
                 #params_dict['model'].stop_training = True
                 params_dict['stop_training'] = True
                 # load best weights
-                model.load_state_dict(self.best_params)
+                if self.load_best:
+                    model.load_state_dict(self.best_params)
+                    logging.info("Best observed parameters loaded.")
 
     def on_fit_end(self, params_dict):
         if self.stopped_epoch > 0:
