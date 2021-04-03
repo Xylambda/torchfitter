@@ -103,7 +103,11 @@ class Trainer:
             self.callback_handler.on_validation_batch_end(self.params_dict)
             self._update_params_dict(validation_loss=tr_loss)
 
-            self._update_history(train_loss=tr_loss, validation_loss=val_loss)
+            self._update_history(
+                train_loss=tr_loss,
+                validation_loss=val_loss,
+                learning_rate=self.optimizer.param_groups[0]['lr']
+            )
 
             epoch_time = time.time() - epoch_start_time
             self._update_params_dict(epoch_time=epoch_time)
@@ -130,9 +134,10 @@ class Trainer:
         for key, value in kwargs.items():
             self.params_dict[key] = value
 
-    def _update_history(self, train_loss, validation_loss):
+    def _update_history(self, train_loss, validation_loss, learning_rate):
         self.params_dict['history']['train_loss'].append(train_loss)
         self.params_dict['history']['validation_loss'].append(validation_loss)
+        self.params_dict['history']['learning_rate'].append(learning_rate)
 
     def _initialize_params_dict(self):
         params_dict = dict(
@@ -147,7 +152,8 @@ class Trainer:
             model=self.model,
             history=dict(
                 train_loss=[],
-                validation_loss=[]
+                validation_loss=[],
+                learning_rate=[]
             )
         )
 

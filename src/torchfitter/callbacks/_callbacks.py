@@ -6,8 +6,10 @@ from .base import Callback
 
 
 class EarlyStopping(Callback):
-    """
-    Callback to handle early stopping.
+    """Callback to handle early stopping.
+
+    `EarlyStopping` will be performed on the validation loss (as it should be).
+    The best observed model will be loaded if `load_best` is True.
 
     Paramaters
     ----------
@@ -21,10 +23,6 @@ class EarlyStopping(Callback):
         super(EarlyStopping, self).__init__()
         self.patience = patience
         self.load_best = load_best
-
-    def _save_params(self, parameters):
-        if self.path is not None:
-            torch.save(parameters, self.path / 'model_params.pth')
 
     def on_fit_start(self, params_dict):
         self.wait = 0
@@ -47,7 +45,6 @@ class EarlyStopping(Callback):
             if self.wait >= self.patience:
                 self.stopped_epoch = epoch_number
                 # send signal to stop training
-                #params_dict['model'].stop_training = True
                 params_dict['stop_training'] = True
                 # load best weights
                 if self.load_best:
@@ -56,7 +53,7 @@ class EarlyStopping(Callback):
 
     def on_fit_end(self, params_dict):
         if self.stopped_epoch > 0:
-            logging.info(f"--- Early stopped at epoch: {self.stopped_epoch} ---")
+            logging.info(f"Early stopping applied at epoch: {self.stopped_epoch}")
 
 
 class LoggerCallback(Callback):
@@ -126,3 +123,23 @@ class TrainerCheckpoint(Callback):
 
     def on_epoch_end(self, params_dict):
         pass
+
+
+class LearningRateScheduler(Callback):
+    """Callback to schedule learning rate.
+
+    `LearningRateScheduler` provides an easy abstraction to schedule the
+    learning rate of the optimizer by calling `scheduler.step()` after the
+    training batch has been performed.
+
+    Parameters
+    ----------
+    scheduler : torch.optim.lr_scheduler
+        Torch learning rate scheduler.
+    """
+    def __init__(self, scheduler):
+        super(LearningRateScheduler, self).__init__()
+        self.scheduler = scheduler
+
+    def on_train_batch_end(self, params_dict):
+        self.scheduler.step()

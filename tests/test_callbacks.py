@@ -1,10 +1,11 @@
 import pytest
 
-from torchfitter.callback.base import CallbackHandler
-from torchfitter.callback import (
+from torchfitter.callbacks.base import CallbackHandler
+from torchfitter.callbacks import (
     EarlyStopping, 
     LoggerCallback,
-    TrainerCheckpoint
+    TrainerCheckpoint,
+    LearningRateScheduler
 )
 
 
@@ -21,4 +22,8 @@ def test_logger_callback():
 
 
 def test_trainer_checkpoint():
+    pass
+
+
+def test_learning_rate_scheduler():
     pass

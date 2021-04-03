@@ -1,4 +1,9 @@
 """ Abstractions to interact with models. """
 
 from . import base
-from ._callbacks import EarlyStopping, LoggerCallback
+from ._callbacks import (
+    EarlyStopping,
+    LoggerCallback,
+    LearningRateScheduler,
+    TrainerCheckpoint
+)

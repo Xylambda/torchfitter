@@ -5,7 +5,6 @@
 
 ![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/Xylambda/torchfitter?label=VERSION&style=for-the-badge)
 ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/Xylambda/torchfitter?style=for-the-badge)
-![GitHub last commit](https://img.shields.io/github/last-commit/Xylambda/torchfitter?style=for-the-badge)
 ![GitHub issues](https://img.shields.io/github/issues/Xylambda/torchfitter?style=for-the-badge)
 
 `TorchFitter` is a simple library I created to ease the training of PyTorch
@@ -57,12 +56,12 @@ import torch.nn as nn
 import torch.optim as optim
 from torchfitter.trainer import Trainer
 from torchfitter.regularization import L1Regularization
-from torchfitter.callbacks import LoggerCallback, EarlyStopping
+from torchfitter.callbacks import (
+    LoggerCallback,
+    EarlyStopping,
+    LearningRateScheduler
+)
 
-
-# callbacks
-logger = LoggerCallback(update_step=50)
-early_stopping = EarlyStopping(patience=50, load_best=True)
 
 # get device
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -74,13 +73,19 @@ criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters())
 regularizer = L1Regularization(regularization_rate=0.01, biases=False)
 
+# callbacks
+logger = LoggerCallback(update_step=50)
+early_stopping = EarlyStopping(patience=50, load_best=True)
+_scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=500, gamma=0.9)
+scheduler = LearningRateScheduler(scheduler=_scheduler)
+
 trainer = Trainer(
     model=model, 
     criterion=criterion,
     optimizer=optimizer, 
     regularizer=regularizer,
     device=device,
-    callbacks=[logger, early_stopping]
+    callbacks=[logger, early_stopping, scheduler]
 )
 
 trainer.fit(train_loader, val_loader, epochs=10)

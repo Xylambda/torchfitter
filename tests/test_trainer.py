@@ -1,4 +1,5 @@
 import torch
+import pytest
 import numpy as np
 import torch.nn as nn
 import torch.optim as optim
@@ -18,7 +19,8 @@ _path = Path(__file__).parent
 DATA_PATH = _path / "data"
 
 
-def test_trainer():
+@pytest.fixture
+def train_config():
     # we create a model and set known params
     model = nn.Linear(in_features=1, out_features=1)
     change_model_params(
@@ -32,14 +34,6 @@ def test_trainer():
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters())
 
-    trainer = Trainer(
-        model=model,
-        criterion=criterion,
-        optimizer=optimizer,
-        logger_kwargs={'show': True, 'update_step':20},
-        device=device
-    )
-    
     X = np.load(DATA_PATH / "features.npy")
     y = np.load(DATA_PATH / "labels.npy")
     
@@ -65,42 +59,67 @@ def test_trainer():
     # torch Loaders
     train_loader = DataLoader(train_wrapper, batch_size=32)
     val_loader = DataLoader(val_wrapper, batch_size=32)
+
+    return train_loader, val_loader, model, criterion, optimizer, device
+
+
+def test_trainer(train_config):
+
+    (
+        train_loader,
+        val_loader,
+        model,
+        criterion,
+        optimizer,
+        device
+    ) = train_config
+
+    trainer = Trainer(
+        model=model,
+        criterion=criterion,
+        optimizer=optimizer,
+        device=device
+    )
     
     # fitting process
     trainer.fit(train_loader, val_loader, epochs=10)
 
     expected_train_loss = np.array(
         [
-            7225.11279296875,
-            7221.5205078125,
-            7217.94189453125,
-            7214.37158203125,
-            7210.80712890625,
-            7207.24609375,
-            7203.68896484375,
-            7200.134765625,
-            7196.58251953125,
-            7193.03369140625
+            8444.36511811756,
+            8440.451636904761,
+            8436.565499441964,
+            8432.687313988095,
+            8428.814755394345,
+            8424.945545014882,
+            8421.079427083334,
+            8417.215611049107,
+            8413.354399181548,
+            8409.495140438989
         ]
     )
 
     expected_val_loss = np.array(
         [
-            8721.7216796875,
-            8717.5390625,
-            8713.3740234375,
-            8709.2138671875,
-            8705.060546875,
-            8700.9111328125,
-            8696.765625,
-            8692.6220703125,
-            8688.4814453125,
-            8684.34375
+            8672.903764204546,
+            8668.988059303978,
+            8665.083984375,
+            8661.185191761364,
+            8657.291459517046,
+            8653.400834517046,
+            8649.512428977272,
+            8645.626642400568,
+            8641.742720170454,
+            8637.861061789772
         ]
     )
 
-    obtained_train_loss = np.array(trainer.train_loss_)
-    obtained_val_loss = np.array(trainer.val_loss_)
+    obtained_train_loss = np.array(
+        trainer.params_dict['history']['train_loss']
+    )
+    obtained_val_loss = np.array(
+        trainer.params_dict['history']['validation_loss']
+    )
 
     np.testing.assert_almost_equal(obtained_train_loss, expected_train_loss)
     np.testing.assert_almost_equal(obtained_val_loss, expected_val_loss)
