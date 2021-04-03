@@ -142,7 +142,7 @@ class CustomCallback(Callback):
     def on_epoch_end(self, params_dict):
         # do stuff
 
-    def on_fit_begin(self, params_dict):
+    def on_fit_start(self, params_dict):
         # do stuff
 
     def on_fit_end(self, params_dict):
@@ -153,9 +153,14 @@ Each method receives `params_dict`, which is a dictionary object containing the
 following params:
 * **training_loss** the current training loss.
 * **validation_loss** the current validation loss.
-* **train_batch** the current training batch.
-* **validation_batch** the current validation batch.
 * **epoch_time** the time it took to compute the current epoch.
+* **epoch_number** the corresponding number of the current epoch.
+* **total_epochs** the total number of epochs.
+* **total_time** the total time it took to complete all epochs.
+* **stop_training** whether to stop the training process (True) or not (False).
+* **device** device where the model and data are stored.
+* **model** the model to train.
+* **history** dictionary containing 'train_loss' and 'validation_loss' lists.
 
 Each epoch, all dynamic params are updated according to the training process. 
 You can pretty much do anything you want with those params during the training 
@@ -174,16 +179,16 @@ from torchfitter.trainer import Trainer
 
 
 class MyTrainer(Trainer):
-    def __init__(self, kwargs):
+    def __init__(self, **kwargs):
         super(MyTrainer, self).__init__(**kwargs)
 
     def _train(self, loader):
         # ...
-        return loss.item()
+        return loss # must be a number
 
     def _validation(self, loader):
         # ...
-        return loss.item()
+        return loss # must be a number
 ```
 
 ## FAQ
@@ -200,6 +205,8 @@ Because I think it enforces good ML practices that way.
 Thank you! Do not hesitate to open an issue and I'll do my best to answer you.
 
 ## CREDITS
-<div>Icons made by <a href="https://www.flaticon.com/authors/vignesh-oviyan" 
+* <div>Icons made by <a href="https://www.flaticon.com/authors/vignesh-oviyan" 
 title="Vignesh Oviyan">Vignesh Oviyan</a> from <a href="https://www.flaticon.com/" 
 title="Flaticon">www.flaticon.com</a></div>
+
+* [Keras API](https://keras.io/api/).

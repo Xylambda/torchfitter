@@ -17,8 +17,8 @@ class Callback:
     def on_train_batch_start(self, params_dict):
         """Called at the start of a training batch.
 
-        Subclasses should override for any actions to run. The trainer expects
-        no values returned from this function.
+        Subclasses should override for any actions to run. The trainer ignores
+        any returned values from this function.
 
         Parameters
         ----------
@@ -30,8 +30,8 @@ class Callback:
     def on_train_batch_end(self, params_dict):
         """Called at the end of a training batch.
 
-        Subclasses should override for any actions to run. The trainer expects
-        no values returned from this function.
+        Subclasses should override for any actions to run. The trainer ignores
+        any returned values from this function.
 
         Parameters
         ----------
@@ -43,8 +43,8 @@ class Callback:
     def on_validation_batch_start(self, params_dict):
         """Called at the start of a validation batch.
 
-        Subclasses should override for any actions to run. The trainer expects
-        no values returned from this function.
+        Subclasses should override for any actions to run. The trainer ignores
+        any returned values from this function.
 
         Parameters
         ----------
@@ -56,8 +56,8 @@ class Callback:
     def on_validation_batch_end(self, params_dict):
         """Called at the end of a validation batch.
 
-        Subclasses should override for any actions to run. The trainer expects
-        no values returned from this function.
+        Subclasses should override for any actions to run. The trainer ignores
+        any returned values from this function.
 
         Parameters
         ----------
@@ -69,8 +69,8 @@ class Callback:
     def on_epoch_start(self, params_dict):
         """Called at the start of an epoch.
 
-        Subclasses should override for any actions to run. The trainer expects
-        no values returned from this function.
+        Subclasses should override for any actions to run. The trainer ignores
+        any returned values from this function.
 
         Parameters
         ----------
@@ -82,8 +82,8 @@ class Callback:
     def on_epoch_end(self, params_dict):
         """Called at the end of an epoch.
 
-        Subclasses should override for any actions to run. The trainer expects
-        no values returned from this function.
+        Subclasses should override for any actions to run. The trainer ignores
+        any returned values from this function.
 
         Parameters
         ----------
@@ -95,8 +95,8 @@ class Callback:
     def on_fit_start(self, params_dict):
         """Called at the start of the fitting process.
 
-        Subclasses should override for any actions to run. The trainer expects
-        no values returned from this function.
+        Subclasses should override for any actions to run. The trainer ignores
+        any returned values from this function.
 
         Parameters
         ----------
@@ -108,8 +108,8 @@ class Callback:
     def on_fit_end(self, params_dict):
         """Called at the end of the fitting process.
 
-        Subclasses should override for any actions to run. The trainer expects
-        no values returned from this function.
+        Subclasses should override for any actions to run. The trainer ignores
+        any returned values from this function.
 
         Parameters
         ----------

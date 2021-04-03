@@ -7,7 +7,6 @@ import statistics
 from tqdm.auto import tqdm
 from torchfitter.conventions import ParamsDict
 from torchfitter.callbacks.base import CallbackHandler
-from torchfitter.trainer._wrapper import ModelWrapper
 
 
 class Trainer:
@@ -33,10 +32,6 @@ class Trainer:
         
     Attributes
     ----------
-    train_loss_ : list
-        Training losses for each epoch.
-    val_loss_ : list
-        Validation losses for each epoch.
     callback_handler : torchfitter.callback.CallbackHandler
         Handles the passed callbacks.
     params_dict : dict
@@ -52,15 +47,13 @@ class Trainer:
         device=None,
         callbacks=None
     ):
-        self.model = ModelWrapper(model=model, device=device)
+        self.model = model.to(device)
         self.criterion = criterion
         self.optimizer = optimizer
         self.regularizer=regularizer
         self.device = self._get_device(device)
 
-        # attributes        
-        self.train_loss_ = []
-        self.val_loss_ = []
+        # attributes
         self.callback_handler = CallbackHandler(callbacks_list=callbacks)
         self.params_dict = self._initialize_params_dict()
 
@@ -85,9 +78,10 @@ class Trainer:
         total_start_time = time.time()
 
         self.callback_handler.on_fit_start(self.params_dict)
+        initial_epoch = self.params_dict['epoch_number']
 
         # ---- train process ----
-        for epoch in tqdm(range(epochs), ascii=True):
+        for epoch in tqdm(range(initial_epoch, epochs), ascii=True):
             self._update_params_dict(
                 epoch_number=epoch,
                 total_epochs=epochs
@@ -116,7 +110,7 @@ class Trainer:
 
             self.callback_handler.on_epoch_end(self.params_dict)
 
-            if self.model.stop_training: # early stopping callback
+            if self.params_dict['stop_training']: # early stopping callback
                 break
 
         total_time = time.time() - total_start_time
@@ -126,6 +120,7 @@ class Trainer:
         
     def _update_params_dict(self, **kwargs):
         """
+        Update paramaters dictionary with the passed key-value pairs.
 
         Parameters
         ----------
@@ -143,12 +138,11 @@ class Trainer:
         params_dict = dict(
             training_loss=0,
             validation_loss=0,
-            train_batch=None,
-            validation_batch=None,
             epoch_time=0,
             epoch_number=0,
             total_epochs=None,
             total_time=0,
+            stop_training=False,
             device=self.device,
             model=self.model,
             history=dict(

@@ -15,7 +15,7 @@ class EarlyStopping(Callback):
         Number of epochs to wait after min has been reached. After 'patience'
         number of epochs without improvemente, the training stops.
     """
-    def __init__(self, patience=50, path=None):
+    def __init__(self, patience=50):
         super(EarlyStopping, self).__init__()
         self.patience = patience
 
@@ -44,7 +44,8 @@ class EarlyStopping(Callback):
             if self.wait >= self.patience:
                 self.stopped_epoch = epoch_number
                 # send signal to stop training
-                params_dict['model'].stop_training = True
+                #params_dict['model'].stop_training = True
+                params_dict['stop_training'] = True
                 # load best weights
                 model.load_state_dict(self.best_params)
 
@@ -61,6 +62,11 @@ class LoggerCallback(Callback):
     ----------
     update_step : int, optional, default: 50
         Logs will be performed every 'update_step'.
+
+    Attributes
+    ----------
+    header : list
+        List of column names for the header.
     """
     def __init__(self, update_step=50):
         super(LoggerCallback, self).__init__()
@@ -80,12 +86,8 @@ class LoggerCallback(Callback):
 
         # log params
         if epoch % self.update_step == 0 or epoch == 1:
-            """
-            msg = f"Epoch {epoch}/{epochs} | Train loss: {train_loss}"
-            msg = f"{msg} | Validation loss: {val_loss}"
-            msg = f"{msg} | Time/epoch: {round(epoch_time, 5)} seconds"
-            """
-            msg = f"Epoch {epoch}/{epochs:16} | Train loss: {train_loss:16} | Validation loss: {val_loss:16} | Time/epoch: {round(epoch_time, 5):16} seconds"
+            tup = (epoch, epochs, train_loss, val_loss, round(epoch_time, 5))
+            msg = 'Epoch: %-0i/%-8i | Train loss: %-13f | Validation loss: %-13f | Time/epoch: %-13f' % tup
             logging.info(msg)
 
     def on_fit_end(self, params_dict):
@@ -94,3 +96,28 @@ class LoggerCallback(Callback):
         logging.info(
             f"""End of training. Total time: {round(total_time, 5)} seconds"""
         )
+
+
+class TrainerCheckpoint(Callback):
+    """Callback to save trainer state.
+
+    `TrainerCheckpoint` allows you to save the current training state so that
+    it can be paused and then started from the saved state.
+
+    Parameters
+    ----------
+    """
+    def __init__(self):
+        pass
+
+    def on_fit_start(self, params_dict):
+        pass
+
+    def on_train_batch_end(self, params_dict):
+        pass
+
+    def on_epoch_start(self, params_dict):
+        pass
+
+    def on_epoch_end(self, params_dict):
+        pass
