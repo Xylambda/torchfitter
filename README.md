@@ -153,7 +153,10 @@ following params:
 * **stop_training** whether to stop the training process (True) or not (False).
 * **device** device where the model and data are stored.
 * **model** the model to train.
-* **history** dictionary containing 'train_loss' and 'validation_loss' lists.
+* **history** dictionary containing:
+    * **train_loss** train loss for each epoch up to the current epoch.
+    * **validation_loss** validation loss for each epoch up to the current epoch.
+    * **learning_rate** learning rate for each epoch up to the current epoch.
 
 Each epoch, all dynamic params are updated according to the training process. 
 You can pretty much do anything you want with those params during the training 
@@ -187,7 +190,9 @@ class MyTrainer(Trainer):
 ## FAQ
 * **Do you know Pytorch-Lightning?**
 
-I know it and I think is awesome; but I like to build and test my own stuff.
+I know it and I think **it is awesome**. This is a personal project. I wouln't
+hesitate to use [Pytorch-Lightning](https://www.pytorchlightning.ai/) for 
+more complex tasks, like distributed training on multiple gpus.
 
 * **Why is the `validation loader` not optional?**
 
