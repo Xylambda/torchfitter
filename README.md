@@ -76,8 +76,9 @@ regularizer = L1Regularization(regularization_rate=0.01, biases=False)
 # callbacks
 logger = LoggerCallback(update_step=50)
 early_stopping = EarlyStopping(patience=50, load_best=True)
-_scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=500, gamma=0.9)
-scheduler = LearningRateScheduler(scheduler=_scheduler)
+scheduler = LearningRateScheduler(
+    scheduler=optim.lr_scheduler.StepLR(optimizer, step_size=500, gamma=0.9)
+)
 
 trainer = Trainer(
     model=model, 

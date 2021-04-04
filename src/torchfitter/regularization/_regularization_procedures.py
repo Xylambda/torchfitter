@@ -19,6 +19,7 @@ class L1Regularization(RegularizerBase):
     The penalty term already handles the product by the lambda regularization
     rate.
     """
+
     def __init__(self, regularization_rate, biases=False):
         super(L1Regularization, self).__init__(regularization_rate, biases)
 
@@ -59,6 +60,7 @@ class L2Regularization(RegularizerBase):
     The penalty term already handles the product by the lambda regularization
     rate.
     """
+
     def __init__(self, regularization_rate, biases=False):
         super(L2Regularization, self).__init__(regularization_rate, biases)
 
@@ -84,7 +86,7 @@ class L2Regularization(RegularizerBase):
 
 class ElasticNetRegularization(RegularizerBase):
     """
-    Implements Elastic Net regression algorithm for regression. ElasticNet 
+    Implements Elastic Net regression algorithm for regression. ElasticNet
     simply applies a combination of L1 and L2:
         ElasticNet = l1_lambda * L1 + l2_lambda * L2
 
@@ -97,10 +99,10 @@ class ElasticNetRegularization(RegularizerBase):
     biases : bool, optional, default: False
         Whether to apply regularization over bias terms (True) or not (False).
     """
+
     def __init__(self, l1_lambda, l2_lambda, biases=False):
         super(ElasticNetRegularization, self).__init__(
-            regularization_rate=None, 
-            biases=biases
+            regularization_rate=None, biases=biases
         )
 
         self.l1_lambda = l1_lambda

@@ -4,7 +4,7 @@
 from ._regularization_procedures import (
     L1Regularization,
     L2Regularization,
-    ElasticNetRegularization
+    ElasticNetRegularization,
 )
 
 # relative subpackages import

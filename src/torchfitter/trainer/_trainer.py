@@ -11,9 +11,9 @@ from torchfitter.callbacks.base import CallbackHandler
 
 class Trainer:
     """Trainer
-    
+
     Class that eases the training of a PyTorch model.
-    
+
     Parameters
     ----------
     model : torch.Module
@@ -29,15 +29,16 @@ class Trainer:
         select the device.
     callbacks : list of torchfitter.callback.Callback
         Callbacks that allow interaction.
-        
+
     Attributes
     ----------
     callback_handler : torchfitter.callback.CallbackHandler
         Handles the passed callbacks.
     params_dict : dict
         Contains training params.
-    
+
     """
+
     def __init__(
         self,
         model,
@@ -45,12 +46,12 @@ class Trainer:
         optimizer,
         regularizer=None,
         device=None,
-        callbacks=None
+        callbacks=None,
     ):
         self.model = model.to(device)
         self.criterion = criterion
         self.optimizer = optimizer
-        self.regularizer=regularizer
+        self.regularizer = regularizer
         self.device = self._get_device(device)
 
         # attributes
@@ -58,12 +59,12 @@ class Trainer:
         self.params_dict = self._initialize_params_dict()
 
         logging.basicConfig(level=logging.INFO)
-        
+
     def fit(self, train_loader, val_loader, epochs):
         """Fits.
-        
+
         Fit the model using the given loaders for the given number of epochs.
-        
+
         Parameters
         ----------
         train_loader : torch.DataLoader
@@ -72,20 +73,17 @@ class Trainer:
             DataLoader containing validation dataset.
         epochs : int
             Number of training epochs.
-        
+
         """
         # track total training time
         total_start_time = time.time()
 
         self.callback_handler.on_fit_start(self.params_dict)
-        initial_epoch = self.params_dict['epoch_number']
+        initial_epoch = self.params_dict["epoch_number"]
 
         # ---- train process ----
         for epoch in tqdm(range(initial_epoch, epochs), ascii=True):
-            self._update_params_dict(
-                epoch_number=epoch,
-                total_epochs=epochs
-            )
+            self._update_params_dict(epoch_number=epoch, total_epochs=epochs)
             self.callback_handler.on_epoch_start(self.params_dict)
 
             # track epoch time
@@ -106,7 +104,7 @@ class Trainer:
             self._update_history(
                 train_loss=tr_loss,
                 validation_loss=val_loss,
-                learning_rate=self.optimizer.param_groups[0]['lr']
+                learning_rate=self.optimizer.param_groups[0]["lr"],
             )
 
             epoch_time = time.time() - epoch_start_time
@@ -114,14 +112,14 @@ class Trainer:
 
             self.callback_handler.on_epoch_end(self.params_dict)
 
-            if self.params_dict['stop_training']: # early stopping callback
+            if self.params_dict["stop_training"]:  # early stopping callback
                 break
 
         total_time = time.time() - total_start_time
 
         self._update_params_dict(total_time=total_time)
         self.callback_handler.on_fit_end(self.params_dict)
-        
+
     def _update_params_dict(self, **kwargs):
         """
         Update paramaters dictionary with the passed key-value pairs.
@@ -135,9 +133,9 @@ class Trainer:
             self.params_dict[key] = value
 
     def _update_history(self, train_loss, validation_loss, learning_rate):
-        self.params_dict['history']['train_loss'].append(train_loss)
-        self.params_dict['history']['validation_loss'].append(validation_loss)
-        self.params_dict['history']['learning_rate'].append(learning_rate)
+        self.params_dict["history"]["train_loss"].append(train_loss)
+        self.params_dict["history"]["validation_loss"].append(validation_loss)
+        self.params_dict["history"]["learning_rate"].append(learning_rate)
 
     def _initialize_params_dict(self):
         params_dict = dict(
@@ -150,20 +148,16 @@ class Trainer:
             stop_training=False,
             device=self.device,
             model=self.model,
-            history=dict(
-                train_loss=[],
-                validation_loss=[],
-                learning_rate=[]
-            )
+            history=dict(train_loss=[], validation_loss=[], learning_rate=[]),
         )
 
         return params_dict
-    
+
     def _train(self, loader):
         self.model.train()
 
-        losses = [] # loss as mean of batch losses
-        
+        losses = []  # loss as mean of batch losses
+
         for features, labels in loader:
             # move to device
             features.to(self.device)
@@ -171,41 +165,41 @@ class Trainer:
 
             # forward pass
             out = self.model(features)
-            
+
             # loss
             loss = self._compute_loss(out, labels)
-            
+
             # remove gradient from previous passes
             self.optimizer.zero_grad()
-            
+
             # backprop
             loss.backward()
-            
+
             # parameters update
             self.optimizer.step()
 
             losses.append(loss.item())
-        
+
         return statistics.mean(losses)
-    
+
     def _validate(self, loader):
         self.model.eval()
 
-        losses = [] # loss as mean of batch losses
-        
+        losses = []  # loss as mean of batch losses
+
         with torch.no_grad():
             for features, labels in loader:
                 # move to device
                 features.to(self.device)
                 labels.to(self.device)
-                
+
                 out = self.model(features)
                 loss = self._compute_loss(out, labels)
 
                 losses.append(loss.item())
-                
+
         return statistics.mean(losses)
-    
+
     def _compute_loss(self, real, target):
         try:
             loss = self.criterion(real, target)
@@ -219,12 +213,12 @@ class Trainer:
         if self.regularizer is not None:
             penalty = self.regularizer(self.model.named_parameters())
             loss += penalty.item()
-            
+
         return loss
 
     def _get_device(self, device):
         if device is None:
-            dev = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             msg = f"Device was automatically selected: {dev}"
             warnings.warn(msg)
         else:
