@@ -3,6 +3,7 @@ import torch
 import logging
 from pathlib import Path
 from .base import Callback
+from torchfitter.conventions import ParamsDict
 
 
 class EarlyStopping(Callback):
@@ -31,9 +32,9 @@ class EarlyStopping(Callback):
         self.best = float("inf")
 
     def on_epoch_end(self, params_dict):
-        current_loss = params_dict["validation_loss"]
-        epoch_number = params_dict["epoch_number"]
-        model = params_dict["model"]
+        current_loss = params_dict[ParamsDict.VAL_LOS]
+        epoch_number = params_dict[ParamsDict.EPOCH_NUMBER]
+        model = params_dict[ParamsDict.MODEL]
 
         if current_loss < self.best:
             self.best = current_loss
@@ -46,7 +47,7 @@ class EarlyStopping(Callback):
             if self.wait >= self.patience:
                 self.stopped_epoch = epoch_number
                 # send signal to stop training
-                params_dict["stop_training"] = True
+                params_dict[ParamsDict.STOP_TRAINING] = True
                 # load best weights
                 if self.load_best:
                     model.load_state_dict(self.best_params)
@@ -79,16 +80,16 @@ class LoggerCallback(Callback):
         self.update_step = update_step
 
     def on_fit_start(self, params_dict):
-        dev = params_dict["device"]
+        dev = params_dict[ParamsDict.DEVICE]
         logging.info(f"Starting training process on {dev}")
 
     def on_epoch_end(self, params_dict):
         # get params
-        epochs = params_dict["total_epochs"]
-        epoch = params_dict["epoch_number"]
-        val_loss = params_dict["validation_loss"]
-        train_loss = params_dict["training_loss"]
-        epoch_time = params_dict["epoch_time"]
+        epochs = params_dict[ParamsDict.TOTAL_EPOCHS]
+        epoch = params_dict[ParamsDict.EPOCH_NUMBER]
+        val_loss = params_dict[ParamsDict.VAL_LOS]
+        train_loss = params_dict[ParamsDict.TRAIN_LOSS]
+        epoch_time = params_dict[ParamsDict.EPOCH_TIME]
 
         # log params
         if epoch % self.update_step == 0 or epoch == 1:
@@ -100,7 +101,7 @@ class LoggerCallback(Callback):
             logging.info(msg)
 
     def on_fit_end(self, params_dict):
-        total_time = params_dict["total_time"]
+        total_time = params_dict[ParamsDict.TOTAL_TIME]
         # final message
         logging.info(
             f"""End of training. Total time: {total_time:0.5f} seconds"""

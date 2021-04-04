@@ -79,11 +79,17 @@ class Trainer:
         total_start_time = time.time()
 
         self.callback_handler.on_fit_start(self.params_dict)
-        initial_epoch = self.params_dict["epoch_number"]
+        initial_epoch = self.params_dict[ParamsDict.EPOCH_NUMBER]
 
         # ---- train process ----
         for epoch in tqdm(range(initial_epoch, epochs), ascii=True):
-            self._update_params_dict(epoch_number=epoch, total_epochs=epochs)
+            # self._update_params_dict(epoch_number=epoch, total_epochs=epochs)
+            self._update_params_dict(
+                **{
+                    ParamsDict.EPOCH_NUMBER: epoch,
+                    ParamsDict.TOTAL_EPOCHS: epochs,
+                }
+            )
             self.callback_handler.on_epoch_start(self.params_dict)
 
             # track epoch time
@@ -93,31 +99,39 @@ class Trainer:
             self.callback_handler.on_train_batch_start(self.params_dict)
             tr_loss = self._train(train_loader)
             self.callback_handler.on_train_batch_end(self.params_dict)
-            self._update_params_dict(training_loss=tr_loss)
 
             # validation
             self.callback_handler.on_validation_batch_start(self.params_dict)
             val_loss = self._validate(val_loader)
             self.callback_handler.on_validation_batch_end(self.params_dict)
-            self._update_params_dict(validation_loss=tr_loss)
 
             self._update_history(
-                train_loss=tr_loss,
-                validation_loss=val_loss,
-                learning_rate=self.optimizer.param_groups[0]["lr"],
+                **{
+                    ParamsDict.HISTORY_TRAIN_LOSS: tr_loss,
+                    ParamsDict.HISTORY_VAL_LOSS: val_loss,
+                    ParamsDict.HISTORY_LR: self.optimizer.param_groups[0]["lr"],
+                }
             )
 
             epoch_time = time.time() - epoch_start_time
-            self._update_params_dict(epoch_time=epoch_time)
+            self._update_params_dict(
+                **{
+                    ParamsDict.VAL_LOS: val_loss,
+                    ParamsDict.TRAIN_LOSS: tr_loss,
+                    ParamsDict.EPOCH_TIME: epoch_time,
+                }
+            )
 
             self.callback_handler.on_epoch_end(self.params_dict)
 
-            if self.params_dict["stop_training"]:  # early stopping callback
+            if self.params_dict[
+                ParamsDict.STOP_TRAINING
+            ]:  # early stopping callback
                 break
 
         total_time = time.time() - total_start_time
 
-        self._update_params_dict(total_time=total_time)
+        self._update_params_dict(**{ParamsDict.TOTAL_TIME: total_time})
         self.callback_handler.on_fit_end(self.params_dict)
 
     def _update_params_dict(self, **kwargs):
@@ -133,23 +147,33 @@ class Trainer:
             self.params_dict[key] = value
 
     def _update_history(self, train_loss, validation_loss, learning_rate):
-        self.params_dict["history"]["train_loss"].append(train_loss)
-        self.params_dict["history"]["validation_loss"].append(validation_loss)
-        self.params_dict["history"]["learning_rate"].append(learning_rate)
+        self.params_dict[ParamsDict.HISTORY][
+            ParamsDict.HISTORY_TRAIN_LOSS
+        ].append(train_loss)
+        self.params_dict[ParamsDict.HISTORY][
+            ParamsDict.HISTORY_VAL_LOSS
+        ].append(validation_loss)
+        self.params_dict[ParamsDict.HISTORY][ParamsDict.HISTORY_LR].append(
+            learning_rate
+        )
 
     def _initialize_params_dict(self):
-        params_dict = dict(
-            training_loss=0,
-            validation_loss=0,
-            epoch_time=0,
-            epoch_number=0,
-            total_epochs=None,
-            total_time=0,
-            stop_training=False,
-            device=self.device,
-            model=self.model,
-            history=dict(train_loss=[], validation_loss=[], learning_rate=[]),
-        )
+        params_dict = {
+            ParamsDict.TRAIN_LOSS: 0,
+            ParamsDict.VAL_LOS: 0,
+            ParamsDict.EPOCH_TIME: 0,
+            ParamsDict.EPOCH_NUMBER: 0,
+            ParamsDict.TOTAL_EPOCHS: None,
+            ParamsDict.TOTAL_TIME: 0,
+            ParamsDict.STOP_TRAINING: False,
+            ParamsDict.DEVICE: self.device,
+            ParamsDict.MODEL: self.model,
+            ParamsDict.HISTORY: {
+                ParamsDict.HISTORY_TRAIN_LOSS: [],
+                ParamsDict.HISTORY_VAL_LOSS: [],
+                ParamsDict.HISTORY_LR: [],
+            },
+        }
 
         return params_dict
 

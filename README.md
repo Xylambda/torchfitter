@@ -130,6 +130,7 @@ extend the base class and fill the desired methods.
 
 ```python
 import torch
+from torchfitter.conventions import ParamsDict
 from torchfitter.callbacks.base import Callback
 
 
@@ -138,8 +139,8 @@ class ModelSaver(Callback):
         super(ModelSaver, self).__init__()
 
     def on_epoch_end(self, params_dict):
-        epoch = params_dict['epoch_number']
-        model = params_dict['model']
+        epoch = params_dict[ParamsDict.EPOCH_NUMBER]
+        model = params_dict[ParamsDict.MODEL]
         torch.save(model.state_dict(), f"model_{epoch}")
 ```
 
