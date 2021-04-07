@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 from .base import Callback
 from torchfitter.conventions import ParamsDict
+from torchfitter.utils import load_pickle, save_pickle
 
 
 class EarlyStopping(Callback):
@@ -62,7 +63,15 @@ class EarlyStopping(Callback):
 
 class LoggerCallback(Callback):
     """
-    Callback to log basic data.
+    `LoggerCallback` is used to log some of the parameters dict in order to
+    monitor the fitting process. The logged parameters are:
+        - Current epoch.
+        - Number of epochs.
+        - Train loss.
+        - Validation loss.
+        - Time / epoch.
+
+    It also outputs the total training time once the fitting process ends.
 
     Parameters
     ----------
@@ -106,32 +115,6 @@ class LoggerCallback(Callback):
         logging.info(
             f"""End of training. Total time: {total_time:0.5f} seconds"""
         )
-
-
-class TrainerCheckpoint(Callback):
-    """Callback to save trainer state.
-
-    `TrainerCheckpoint` allows you to save the current training state so that
-    it can be paused and then started from the saved state.
-
-    Parameters
-    ----------
-    """
-
-    def __init__(self):
-        pass
-
-    def on_fit_start(self, params_dict):
-        pass
-
-    def on_train_batch_end(self, params_dict):
-        pass
-
-    def on_epoch_start(self, params_dict):
-        pass
-
-    def on_epoch_end(self, params_dict):
-        pass
 
 
 class LearningRateScheduler(Callback):

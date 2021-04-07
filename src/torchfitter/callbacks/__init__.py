@@ -5,5 +5,4 @@ from ._callbacks import (
     EarlyStopping,
     LoggerCallback,
     LearningRateScheduler,
-    TrainerCheckpoint,
 )

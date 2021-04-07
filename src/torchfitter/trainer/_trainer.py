@@ -1,5 +1,6 @@
 import time
 import torch
+import pickle
 import logging
 import warnings
 import statistics
@@ -7,6 +8,7 @@ import statistics
 from tqdm.auto import tqdm
 from torchfitter.conventions import ParamsDict
 from torchfitter.callbacks.base import CallbackHandler
+from torchfitter.utils import load_pickle, save_pickle
 
 
 class Trainer:
@@ -83,7 +85,6 @@ class Trainer:
 
         # ---- train process ----
         for epoch in tqdm(range(initial_epoch, epochs), ascii=True):
-            # self._update_params_dict(epoch_number=epoch, total_epochs=epochs)
             self._update_params_dict(
                 **{
                     ParamsDict.EPOCH_NUMBER: epoch,
@@ -124,9 +125,7 @@ class Trainer:
 
             self.callback_handler.on_epoch_end(self.params_dict)
 
-            if self.params_dict[
-                ParamsDict.STOP_TRAINING
-            ]:  # early stopping callback
+            if self.params_dict[ParamsDict.STOP_TRAINING]:
                 break
 
         total_time = time.time() - total_start_time
@@ -249,3 +248,33 @@ class Trainer:
             dev = device
 
         return dev
+
+    @staticmethod
+    def load_checkpoint(path):
+        """Load trainer checkpoint.
+
+        Load a previously saved state of a trainer.
+
+        Parameters
+        ----------
+        path : str or Path
+            Path to checkpoint.
+
+        """
+        #self.params_dict = load_pickle(path)
+        return load_pickle(path)
+
+    def save_checkpoint(self, path, protocol=pickle.HIGHEST_PROTOCOL):
+        """Save trainer checkpoint.
+
+        Save a pickle with the parameters dictionary.
+
+        Parameters
+        ----------
+        path : str or Path
+            Path where to save the pickle.
+        protocol : int, optional, default: pickle.HIGHEST_PROTOCOL
+            Used pickle protocol.
+        
+        """
+        save_pickle(obj=self.params_dict, path=path, protocol=protocol)

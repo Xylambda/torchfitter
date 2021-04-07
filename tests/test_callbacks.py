@@ -4,7 +4,6 @@ from torchfitter.callbacks.base import CallbackHandler
 from torchfitter.callbacks import (
     EarlyStopping, 
     LoggerCallback,
-    TrainerCheckpoint,
     LearningRateScheduler
 )
 
@@ -18,10 +17,6 @@ def test_earlystopping():
 
 
 def test_logger_callback():
-    pass
-
-
-def test_trainer_checkpoint():
     pass
 
 

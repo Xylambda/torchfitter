@@ -194,7 +194,7 @@ class MyTrainer(Trainer):
 
 I know it and I think **it is awesome**. This is a personal project. I wouln't
 hesitate to use [Pytorch-Lightning](https://www.pytorchlightning.ai/) for 
-more complex tasks, like distributed training on multiple gpus.
+more complex tasks, like distributed training on multiple GPUs.
 
 * **Why is the `validation loader` not optional?**
 
