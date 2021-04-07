@@ -248,33 +248,3 @@ class Trainer:
             dev = device
 
         return dev
-
-    @staticmethod
-    def load_checkpoint(path):
-        """Load trainer checkpoint.
-
-        Load a previously saved state of a trainer.
-
-        Parameters
-        ----------
-        path : str or Path
-            Path to checkpoint.
-
-        """
-        #self.params_dict = load_pickle(path)
-        return load_pickle(path)
-
-    def save_checkpoint(self, path, protocol=pickle.HIGHEST_PROTOCOL):
-        """Save trainer checkpoint.
-
-        Save a pickle with the parameters dictionary.
-
-        Parameters
-        ----------
-        path : str or Path
-            Path where to save the pickle.
-        protocol : int, optional, default: pickle.HIGHEST_PROTOCOL
-            Used pickle protocol.
-        
-        """
-        save_pickle(obj=self.params_dict, path=path, protocol=protocol)
