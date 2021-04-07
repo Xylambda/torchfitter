@@ -84,13 +84,7 @@ class Trainer:
         initial_epoch = self.params_dict[ParamsDict.EPOCH_NUMBER]
 
         # ---- train process ----
-        for epoch in tqdm(range(initial_epoch, epochs), ascii=True):
-            self._update_params_dict(
-                **{
-                    ParamsDict.EPOCH_NUMBER: epoch,
-                    ParamsDict.TOTAL_EPOCHS: epochs,
-                }
-            )
+        for epoch in tqdm(range(initial_epoch, epochs+1), ascii=True):
             self.callback_handler.on_epoch_start(self.params_dict)
 
             # track epoch time
@@ -120,6 +114,8 @@ class Trainer:
                     ParamsDict.VAL_LOS: val_loss,
                     ParamsDict.TRAIN_LOSS: tr_loss,
                     ParamsDict.EPOCH_TIME: epoch_time,
+                    ParamsDict.EPOCH_NUMBER: epoch,
+                    ParamsDict.TOTAL_EPOCHS: epochs,
                 }
             )
 
@@ -158,10 +154,10 @@ class Trainer:
 
     def _initialize_params_dict(self):
         params_dict = {
-            ParamsDict.TRAIN_LOSS: 0,
-            ParamsDict.VAL_LOS: 0,
+            ParamsDict.TRAIN_LOSS: float('inf'),
+            ParamsDict.VAL_LOS: float('inf'),
             ParamsDict.EPOCH_TIME: 0,
-            ParamsDict.EPOCH_NUMBER: 0,
+            ParamsDict.EPOCH_NUMBER: 1,
             ParamsDict.TOTAL_EPOCHS: None,
             ParamsDict.TOTAL_TIME: 0,
             ParamsDict.STOP_TRAINING: False,
