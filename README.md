@@ -12,19 +12,13 @@ models. It features a class called `Trainer` that includes the basic
 functionality to fit models in a Keras-like style.
 
 ## Installation
-Normal user:
+**Normal user**
 ```bash
 git clone https://github.com/Xylambda/torchfitter.git
 pip install torchfitter/.
 ```
 
-alternatively:
-```bash
-git clone https://github.com/Xylambda/torchfitter.git
-pip install torchfitter/. -r torchfitter/requirements-base.txt
-```
-
-Developer:
+**Developer**
 ```bash
 git clone https://github.com/Xylambda/torchfitter.git
 pip install -e torchfitter/. -r torchfitter/requirements-dev.txt
