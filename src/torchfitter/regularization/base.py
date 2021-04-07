@@ -14,6 +14,7 @@ class RegularizerBase:
     biases : bool, optional, default: False
         Whether to apply regularization over bias terms (True) or not (False).
     """
+
     def __init__(self, regularization_rate, biases=False):
         self.rate = regularization_rate
         self.biases = biases

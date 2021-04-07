@@ -19,6 +19,7 @@ class L1Regularization(RegularizerBase):
     The penalty term already handles the product by the lambda regularization
     rate.
     """
+
     def __init__(self, regularization_rate, biases=False):
         super(L1Regularization, self).__init__(regularization_rate, biases)
 
@@ -42,9 +43,50 @@ class L1Regularization(RegularizerBase):
         return self.rate * penalty_term
 
 
+class L2Regularization(RegularizerBase):
+    """
+    Applies L2 regularization over the model parameters. L2 is usually called
+    'Lasso Regression'.
+
+    Parameters
+    ----------
+    regularization_rate : float
+        Regularization rate. Also called `lambda`.
+    biases : bool, optional, default: False
+        Whether to apply regularization over bias terms (True) or not (False).
+
+    Note
+    ----
+    The penalty term already handles the product by the lambda regularization
+    rate.
+    """
+
+    def __init__(self, regularization_rate, biases=False):
+        super(L2Regularization, self).__init__(regularization_rate, biases)
+
+    def __repr__(self):
+        rpr = f"""L2Regularization(
+            regularization_rate={self.rate},
+            biases={self.biases}
+        )"""
+        return rpr
+
+    def _compute_penalty(self, named_parameters):
+        # Initialize with tensor, cannot be scalar
+        penalty_term = torch.zeros(1, 1, requires_grad=True)
+
+        for name, param in named_parameters:
+            if not self.biases and name.endswith("bias"):
+                pass
+            else:
+                penalty_term = penalty_term + param.norm(p=2)
+
+        return self.rate * penalty_term
+
+
 class ElasticNetRegularization(RegularizerBase):
     """
-    Implements Elastic Net regression algorithm for regression. ElasticNet 
+    Implements Elastic Net regression algorithm for regression. ElasticNet
     simply applies a combination of L1 and L2:
         ElasticNet = l1_lambda * L1 + l2_lambda * L2
 
@@ -57,10 +99,10 @@ class ElasticNetRegularization(RegularizerBase):
     biases : bool, optional, default: False
         Whether to apply regularization over bias terms (True) or not (False).
     """
+
     def __init__(self, l1_lambda, l2_lambda, biases=False):
         super(ElasticNetRegularization, self).__init__(
-            regularization_rate=None, 
-            biases=biases
+            regularization_rate=None, biases=biases
         )
 
         self.l1_lambda = l1_lambda
