@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## [2.0.01] - 2021-04-29
+
+### Added
+
+- New `reset_parameters` method in the trainer.
+
+### Fixed
+
+- Fix error in setup naming.
+
+### Changed
+
+- Change the `requirements.txt` to remove unnecessary dependencies.
+
+
 ## [1.0.0] - 2021-01-08
 
 ### Added

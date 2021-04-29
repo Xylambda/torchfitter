@@ -172,6 +172,13 @@ class Trainer:
 
         return params_dict
 
+    def reset_parameters(self):
+        """
+        Reset the of the internal dictionary that keeps track of the parameters
+        state.
+        """
+        self._initialize_params_dict()
+
     def _train(self, loader):
         self.model.train()
 
