@@ -12,11 +12,14 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 setup(
     name='torchfitter',
     version=versioneer.get_version(),
+    description='Simple trainer to optimize PyTorch models',
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     cmdclass=versioneer.get_cmdclass(),
     packages=find_packages(where='src'),
     package_dir={'':'src'},
-    description='Simple trainer to optimize PyTorch models',
     author='Alejandro Pérez',
+    python_requires='>=3.6,',
     install_requires=[
         "numpy",
         "torch",
