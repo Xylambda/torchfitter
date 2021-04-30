@@ -128,6 +128,11 @@ class LearningRateScheduler(Callback):
     ----------
     scheduler : torch.optim.lr_scheduler
         Torch learning rate scheduler.
+
+    References
+    ----------
+    ..[1] PyTorch - How to adjust learning rate
+       https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate
     """
 
     def __init__(self, scheduler):

@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## [2.0.01] - 2021-04-29
+
+### Added
+
+- Added new `reset_parameters` method in the trainer.
+- Added requirements file for example.
+
+### Fixed
+
+- Fix error in setup naming.
+- Fix moving the tensors to device. Now, it is done in each batch.
+
+### Changed
+
+- Change the `requirements.txt` to remove unnecessary dependencies.
+
+
 ## [1.0.0] - 2021-01-08
 
 ### Added
