@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 ### Fixed
 
 - Fix error in setup naming.
+- Fix moving the tensors to device. Now, it is done in each batch.
 
 ### Changed
 

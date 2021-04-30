@@ -50,11 +50,11 @@ class Trainer:
         device=None,
         callbacks=None,
     ):
-        self.model = model.to(device)
         self.criterion = criterion
         self.optimizer = optimizer
         self.regularizer = regularizer
         self.device = self._get_device(device)
+        self.model = model.to(self.device) # DISC: is it really necessary?
 
         # attributes
         self.callback_handler = CallbackHandler(callbacks_list=callbacks)
@@ -174,10 +174,10 @@ class Trainer:
 
     def reset_parameters(self):
         """
-        Reset the of the internal dictionary that keeps track of the parameters
-        state.
+        Reset the internal dictionary that keeps track of the parameters state.
         """
-        self._initialize_params_dict()
+        restart_dict = self._initialize_params_dict()
+        self.params_dict = restart_dict
 
     def _train(self, loader):
         self.model.train()
@@ -185,15 +185,11 @@ class Trainer:
         losses = []  # loss as mean of batch losses
 
         for features, labels in loader:
-            # move to device
-            features.to(self.device)
-            labels.to(self.device)
-
             # forward pass
-            out = self.model(features)
+            out = self.model(features.to(self.device))
 
             # loss
-            loss = self._compute_loss(out, labels)
+            loss = self._compute_loss(out, labels.to(self.device))
 
             # remove gradient from previous passes
             self.optimizer.zero_grad()
@@ -215,12 +211,8 @@ class Trainer:
 
         with torch.no_grad():
             for features, labels in loader:
-                # move to device
-                features.to(self.device)
-                labels.to(self.device)
-
-                out = self.model(features)
-                loss = self._compute_loss(out, labels)
+                out = self.model(features.to(self.device))
+                loss = self._compute_loss(out, labels.to(self.device))
 
                 losses.append(loss.item())
 

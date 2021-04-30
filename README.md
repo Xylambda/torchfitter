@@ -1,6 +1,6 @@
 
 <p align="center">
-  <img src="img/logo.png" width="300">
+  <img src="img/logo.png" width="320">
 </p>
 
 ![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/Xylambda/torchfitter?label=VERSION&style=for-the-badge)
@@ -83,7 +83,7 @@ trainer = Trainer(
     callbacks=[logger, early_stopping, scheduler]
 )
 
-trainer.fit(train_loader, val_loader, epochs=10)
+trainer.fit(train_loader, val_loader, epochs=1000)
 ```
 
 
