@@ -30,7 +30,7 @@ class L1Regularization(RegularizerBase):
         )"""
         return rpr
 
-    def _compute_penalty(self, named_parameters):
+    def compute_penalty(self, named_parameters):
         # Initialize with tensor, cannot be scalar
         penalty_term = torch.zeros(1, 1, requires_grad=True)
 
@@ -71,7 +71,7 @@ class L2Regularization(RegularizerBase):
         )"""
         return rpr
 
-    def _compute_penalty(self, named_parameters):
+    def compute_penalty(self, named_parameters):
         # Initialize with tensor, cannot be scalar
         penalty_term = torch.zeros(1, 1, requires_grad=True)
 
@@ -116,7 +116,7 @@ class ElasticNetRegularization(RegularizerBase):
         )"""
         return rpr
 
-    def _compute_penalty(self, named_parameters):
+    def compute_penalty(self, named_parameters):
         # Initialize with tensor, cannot be scalar
         penalty_term = torch.zeros(1, 1, requires_grad=True)
 

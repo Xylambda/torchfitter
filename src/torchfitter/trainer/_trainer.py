@@ -92,12 +92,12 @@ class Trainer:
 
             # train
             self.callback_handler.on_train_batch_start(self.params_dict)
-            tr_loss = self._train(train_loader)
+            tr_loss = self.train_step(train_loader)
             self.callback_handler.on_train_batch_end(self.params_dict)
 
             # validation
             self.callback_handler.on_validation_batch_start(self.params_dict)
-            val_loss = self._validate(val_loader)
+            val_loss = self.validation_step(val_loader)
             self.callback_handler.on_validation_batch_end(self.params_dict)
 
             self._update_history(
@@ -179,7 +179,7 @@ class Trainer:
         restart_dict = self._initialize_params_dict()
         self.params_dict = restart_dict
 
-    def _train(self, loader):
+    def train_step(self, loader):
         self.model.train()
 
         losses = []  # loss as mean of batch losses
@@ -204,7 +204,7 @@ class Trainer:
 
         return statistics.mean(losses)
 
-    def _validate(self, loader):
+    def validation_step(self, loader):
         self.model.eval()
 
         losses = []  # loss as mean of batch losses

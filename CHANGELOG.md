@@ -4,7 +4,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
-## [2.0.01] - 2021-04-29
+
+## [2.0.2] - 2021-05-10
+
+### Fixed
+
+- Solve warning where learning rate scheduler was being called before loss.
+
+### Changed
+
+- Change `_compute_penalty` in favour of `compute_penalty`.
+- Change `_train` in favour of `train_step`.
+- Change `_validate` in favour of `validation_step`.
+- Update tests to be correct.
+
+## [2.0.1] - 2021-04-29
 
 ### Added
 
