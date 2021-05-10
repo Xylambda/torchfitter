@@ -11,6 +11,10 @@
 models. It features a class called `Trainer` that includes the basic 
 functionality to fit models in a Keras-like style.
 
+The library also provides a callbacks API that can be used to interact with
+the model during the training process, as well as a set of basic regularization
+procedures.
+
 ## Installation
 **Normal user**
 ```bash
@@ -91,7 +95,7 @@ trainer.fit(train_loader, val_loader, epochs=1000)
 `TorchFitter` includes regularization algorithms but you can also create your
 own procedures. To create your own algorithms you just:
 1. Inherit from `RegularizerBase` and call the `super` operator appropiately.
-2. Implement the procedure in the `_compute_penalty` method.
+2. Implement the procedure in the `compute_penalty` method.
 
 Here's an example implementing L1 from scratch:
 
@@ -104,7 +108,7 @@ class L1Regularization(RegularizerBase):
     def __init__(self, regularization_rate, biases=False):
         super(L1Regularization, self).__init__(regularization_rate, biases)
 
-    def _compute_penalty(self, named_parameters):
+    def compute_penalty(self, named_parameters):
         # Initialize with tensor, cannot be scalar
         penalty_term = torch.zeros(1, 1, requires_grad=True)
 
@@ -162,9 +166,9 @@ process.
 ## Custom fitting process
 The current Trainer design has been created to process a dataloader that
 returns 2 tensors: features and labels. Extending the Trainer class and
-rewriting the methods `_train` and `_validation` should allow you to create
-your own custom steps as long as they receive a dataloader and they return the
-loss value as a number.
+rewriting the methods `train_step` and `validation_step` should allow you to 
+create your own custom steps as long as they receive a dataloader and they 
+return the loss value as a number.
 
 ```python
 from torchfitter.trainer import Trainer
@@ -174,11 +178,11 @@ class MyTrainer(Trainer):
     def __init__(self, **kwargs):
         super(MyTrainer, self).__init__(**kwargs)
 
-    def _train(self, loader):
+    def train_step(self, loader):
         # ...
         return loss # must be a number
 
-    def _validation(self, loader):
+    def validation_step(self, loader):
         # ...
         return loss # must be a number
 ```

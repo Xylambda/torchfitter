@@ -136,9 +136,9 @@ def test_logger_callback(caplog, train_config):
     assert caplog.records[0].levelname == "INFO", msg
 
     msg = "Logger not stating where the training is running."
-    assert caplog.records[0].message == "Starting training process on cpu", msg
+    assert caplog.records[0].message.startswith("Starting training process"), msg
 
-    log_msg = "Epoch: 1/10       | Train loss: 8444.365118   | Validation loss: 8672.903764   | Time/epoch:"
+    log_msg = "Epoch: 1/10       | Train loss: 8444.365002   | Validation loss: 8672.904031   | Time/epoch:"
     msg = "Logger not logging first epoch correctly"
     assert caplog.records[1].message.startswith(log_msg), msg
 

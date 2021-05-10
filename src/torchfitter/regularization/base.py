@@ -5,7 +5,7 @@ class RegularizerBase:
     """
     Base class for implementing regularization algorithms. One should inherit
     from this class the basic elements and implement his/her procedure in the
-    method `_compute_penalty`.
+    method `compute_penalty`.
 
     Parameters
     ----------
@@ -20,7 +20,7 @@ class RegularizerBase:
         self.biases = biases
 
     def __call__(self, named_parameters):
-        return self._compute_penalty(named_parameters)
+        return self.compute_penalty(named_parameters)
 
-    def _compute_penalty(self, named_parameters):
+    def compute_penalty(self, named_parameters):
         raise NotImplementedError()

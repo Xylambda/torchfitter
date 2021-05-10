@@ -140,4 +140,7 @@ class LearningRateScheduler(Callback):
         self.scheduler = scheduler
 
     def on_train_batch_end(self, params_dict):
-        self.scheduler.step()
+        if params_dict[ParamsDict.EPOCH_NUMBER] == 1:
+            pass
+        else:
+            self.scheduler.step()
