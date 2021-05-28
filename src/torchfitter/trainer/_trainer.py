@@ -1,14 +1,13 @@
 import time
 import torch
-import pickle
 import logging
 import warnings
 import statistics
 
 from tqdm.auto import tqdm
+import torchfitter
 from torchfitter.conventions import ParamsDict
 from torchfitter.callbacks.base import CallbackHandler
-from torchfitter.utils import load_pickle, save_pickle
 
 
 class Trainer:
@@ -43,29 +42,44 @@ class Trainer:
 
     def __init__(
         self,
-        model,
-        criterion,
-        optimizer,
+        model: torch.nn.Module,
+        criterion: torch.nn.Module,
+        optimizer: torch.optim.Optimizer,
         regularizer=None,
         device=None,
-        callbacks=None,
+        callbacks: list =None,
     ):
         self.criterion = criterion
         self.optimizer = optimizer
         self.regularizer = regularizer
         self.device = self._get_device(device)
-        self.model = model.to(self.device) # DISC: is it really necessary?
+        self.model = model.to(self.device)
+        self.callbacks_list = callbacks
 
         # attributes
-        self.callback_handler = CallbackHandler(callbacks_list=callbacks)
         self.params_dict = self._initialize_params_dict()
+        self.callback_handler = CallbackHandler(
+            callbacks_list=self.callbacks_list
+        )
+
+        # ----- create bar format ------
+        r_bar = '| {n_fmt}/{total_fmt} | {rate_noinv_fmt}{postfix}, ramaining_time: {remaining} s'
+        left = "{l_bar}{bar}"
+        bar_fmt = f"{left}{r_bar}"
+        self.__bar_format = bar_fmt
 
         logging.basicConfig(level=logging.INFO)
 
-    def fit(self, train_loader, val_loader, epochs):
-        """Fits.
+    def fit(
+        self,
+        train_loader: torch.utils.data.dataloader.DataLoader,
+        val_loader: torch.utils.data.dataloader.DataLoader,
+        epochs: int
+    ) -> None:
+        """Fit the model.
 
-        Fit the model using the given loaders for the given number of epochs.
+        Fit the model using the given loaders for the given number of epochs. A
+        progress bar will be displayed using tqdm.
 
         Parameters
         ----------
@@ -77,14 +91,26 @@ class Trainer:
             Number of training epochs.
 
         """
+        # define progress bar
+        initial_epoch = self.params_dict[ParamsDict.EPOCH_NUMBER]
+        pbar = tqdm(
+            range(initial_epoch, epochs),
+            ascii=True,
+            unit=' epoch',
+            bar_format=self.__bar_format,
+            leave=False,
+            disable=False,
+        )
+        self._update_params_dict(**{ParamsDict.PROG_BAR: pbar})
+
         # track total training time
         total_start_time = time.time()
 
         self.callback_handler.on_fit_start(self.params_dict)
-        initial_epoch = self.params_dict[ParamsDict.EPOCH_NUMBER]
 
         # ---- train process ----
-        for epoch in tqdm(range(initial_epoch, epochs+1), ascii=True):
+        for epoch in pbar:
+
             self.callback_handler.on_epoch_start(self.params_dict)
 
             # track epoch time
@@ -111,7 +137,7 @@ class Trainer:
             epoch_time = time.time() - epoch_start_time
             self._update_params_dict(
                 **{
-                    ParamsDict.VAL_LOS: val_loss,
+                    ParamsDict.VAL_LOSS: val_loss,
                     ParamsDict.TRAIN_LOSS: tr_loss,
                     ParamsDict.EPOCH_TIME: epoch_time,
                     ParamsDict.EPOCH_NUMBER: epoch,
@@ -141,21 +167,14 @@ class Trainer:
         for key, value in kwargs.items():
             self.params_dict[key] = value
 
-    def _update_history(self, train_loss, validation_loss, learning_rate):
-        self.params_dict[ParamsDict.HISTORY][
-            ParamsDict.HISTORY_TRAIN_LOSS
-        ].append(train_loss)
-        self.params_dict[ParamsDict.HISTORY][
-            ParamsDict.HISTORY_VAL_LOSS
-        ].append(validation_loss)
-        self.params_dict[ParamsDict.HISTORY][ParamsDict.HISTORY_LR].append(
-            learning_rate
-        )
+    def _update_history(self, **kwargs):
+        for key, value in kwargs.items():
+            self.params_dict[ParamsDict.HISTORY][key].append(value)
 
     def _initialize_params_dict(self):
         params_dict = {
             ParamsDict.TRAIN_LOSS: float('inf'),
-            ParamsDict.VAL_LOS: float('inf'),
+            ParamsDict.VAL_LOSS: float('inf'),
             ParamsDict.EPOCH_TIME: 0,
             ParamsDict.EPOCH_NUMBER: 1,
             ParamsDict.TOTAL_EPOCHS: None,
@@ -163,6 +182,7 @@ class Trainer:
             ParamsDict.STOP_TRAINING: False,
             ParamsDict.DEVICE: self.device,
             ParamsDict.MODEL: self.model,
+            ParamsDict.PROG_BAR: None,
             ParamsDict.HISTORY: {
                 ParamsDict.HISTORY_TRAIN_LOSS: [],
                 ParamsDict.HISTORY_VAL_LOSS: [],
@@ -172,53 +192,139 @@ class Trainer:
 
         return params_dict
 
-    def reset_parameters(self):
+    def set_bar_format(self, fmt: str) -> None:
+        """
+        Set the bar format for the tqdm progress bar. See References for more
+        info.
+
+        Parameters
+        ----------
+        fmt : str
+            New bar format.
+
+        References
+        ----------
+        .. [1] tqdm API
+           https://tqdm.github.io/docs/tqdm/
+        """
+        self.__bar_format = fmt
+
+    def reset_parameters(
+        self, reset_callbacks=False, reset_model=False
+    ) -> None:
         """
         Reset the internal dictionary that keeps track of the parameters state.
+
+        Parameters
+        ----------
+        reset_callbacks : bool, optional, default: False
+            True to reset the callbacks states as well as the Callback Handler.
+        reset_model : bool, optional, default: False
+            True to reset the model state.
         """
         restart_dict = self._initialize_params_dict()
+        
+        if reset_model:
+            restart_dict[ParamsDict.MODEL].reset_parameters()
+
+        if reset_callbacks:
+            if self.callbacks_list is None:
+                pass
+            else:
+                for callback in self.callbacks_list:
+                    callback.reset_parameters()
+
+                self.callback_handler = CallbackHandler(
+                    callbacks_list=self.callbacks_list
+                )
+
         self.params_dict = restart_dict
 
-    def train_step(self, loader):
+    def train_step(
+        self, loader: torch.utils.data.dataloader.DataLoader
+    ) -> float:
+        """Train step.
+
+        Perform a train step using the given dataloader.
+
+        Parameters
+        ----------
+        loader: torch.utils.data.dataloader.DataLoader
+            Dataloader for train set.
+
+        Returns
+        -------
+        float
+            Mean loss of the batch.
+        """
         self.model.train()
 
         losses = []  # loss as mean of batch losses
 
-        for features, labels in loader:
-            # forward pass
+        for idx, (features, labels) in enumerate(loader):
+            # forward pass and loss
             out = self.model(features.to(self.device))
-
-            # loss
-            loss = self._compute_loss(out, labels.to(self.device))
-
-            # remove gradient from previous passes
+            loss = self.compute_loss(out, labels.to(self.device))
+            
+            # clean gradients, backpropagation and params. update
             self.optimizer.zero_grad()
-
-            # backprop
             loss.backward()
-
-            # parameters update
             self.optimizer.step()
 
             losses.append(loss.item())
 
         return statistics.mean(losses)
 
-    def validation_step(self, loader):
+    def validation_step(
+        self, loader: torch.utils.data.dataloader.DataLoader
+    ) -> float:
+        """Validation step.
+
+        Perform a validation step using the given dataloader.
+
+        Parameters
+        ----------
+        loader: torch.utils.data.dataloader.DataLoader
+            Dataloader for validation set.
+
+        Returns
+        -------
+        float
+            Mean loss of the batch.
+        """
         self.model.eval()
 
         losses = []  # loss as mean of batch losses
 
         with torch.no_grad():
-            for features, labels in loader:
+            for idx, (features, labels) in enumerate(loader):
                 out = self.model(features.to(self.device))
-                loss = self._compute_loss(out, labels.to(self.device))
+                loss = self.compute_loss(out, labels.to(self.device))
 
                 losses.append(loss.item())
 
         return statistics.mean(losses)
 
-    def _compute_loss(self, real, target):
+    def compute_loss(
+        self, real: torch.Tensor, target: torch.Tensor
+    ) -> torch.Tensor:
+        """Compute loss graph.
+
+        When this method is overrided, the regularization procedures that are 
+        not included in the optimizer must be handled by the user.
+
+        Parameters
+        ----------
+        real : torch.Tensor
+            Obtained tensor after performing a forward pass.
+        target : torch.Tensor
+            Target tensor to compute loss.
+
+        Returns
+        -------
+        loss : torch.Tensor
+            Loss graph as (1x1) torch.Tensor.
+        """
         try:
             loss = self.criterion(real, target)
         except:
@@ -229,7 +335,9 @@ class Trainer:
 
         # apply regularization if any
         if self.regularizer is not None:
-            penalty = self.regularizer(self.model.named_parameters())
+            penalty = self.regularizer(
+                self.model.named_parameters(), self.device
+            )
             loss += penalty.item()
 
         return loss

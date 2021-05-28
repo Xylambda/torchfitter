@@ -15,7 +15,7 @@ class Callback:
     def __init__(self):
         logging.basicConfig(level=logging.INFO)
 
-    def on_train_batch_start(self, params_dict):
+    def on_train_batch_start(self, params_dict: dict) -> None:
         """Called at the start of a training batch.
 
         Subclasses should override for any actions to run. The trainer ignores
@@ -28,7 +28,7 @@ class Callback:
         """
         pass
 
-    def on_train_batch_end(self, params_dict):
+    def on_train_batch_end(self, params_dict: dict) -> None:
         """Called at the end of a training batch.
 
         Subclasses should override for any actions to run. The trainer ignores
@@ -41,7 +41,7 @@ class Callback:
         """
         pass
 
-    def on_validation_batch_start(self, params_dict):
+    def on_validation_batch_start(self, params_dict: dict) -> None:
         """Called at the start of a validation batch.
 
         Subclasses should override for any actions to run. The trainer ignores
@@ -54,7 +54,7 @@ class Callback:
         """
         pass
 
-    def on_validation_batch_end(self, params_dict):
+    def on_validation_batch_end(self, params_dict: dict) -> None:
         """Called at the end of a validation batch.
 
         Subclasses should override for any actions to run. The trainer ignores
@@ -67,7 +67,7 @@ class Callback:
         """
         pass
 
-    def on_epoch_start(self, params_dict):
+    def on_epoch_start(self, params_dict: dict) -> None:
         """Called at the start of an epoch.
 
         Subclasses should override for any actions to run. The trainer ignores
@@ -80,7 +80,7 @@ class Callback:
         """
         pass
 
-    def on_epoch_end(self, params_dict):
+    def on_epoch_end(self, params_dict: dict) -> None:
         """Called at the end of an epoch.
 
         Subclasses should override for any actions to run. The trainer ignores
@@ -93,7 +93,7 @@ class Callback:
         """
         pass
 
-    def on_fit_start(self, params_dict):
+    def on_fit_start(self, params_dict: dict) -> None:
         """Called at the start of the fitting process.
 
         Subclasses should override for any actions to run. The trainer ignores
@@ -106,7 +106,7 @@ class Callback:
         """
         pass
 
-    def on_fit_end(self, params_dict):
+    def on_fit_end(self, params_dict: dict) -> None:
         """Called at the end of the fitting process.
 
         Subclasses should override for any actions to run. The trainer ignores
@@ -118,6 +118,20 @@ class Callback:
             Dictionary containing the parameters of the training process.
         """
         pass
+
+    def reset_parameters(self) -> None:
+        """Reset callback parameters when called.
+
+        This function is called by `torchfitter.manager.Manager` class to 
+        restart the initial parameters of self callback.
+
+        It is mandatory to implement this method if one wants to use the 
+        `torchfitter.manager.Manager` class along with a set of callbacks.
+        """
+        raise NotImplementedError(
+            "Callback must implement 'reset_parameters' method in order to run"
+            "multiple experiments consistently."
+        )
 
 
 class CallbackHandler(Callback):
@@ -142,42 +156,132 @@ class CallbackHandler(Callback):
 
         self.callbacks_list = callbacks_list
 
-    def on_train_batch_start(self, params_dict):
+    def on_train_batch_start(self, params_dict: dict) -> None:
+        """Called at the start of a training batch.
+
+        Call this method for all given callbacks list. Any returned values will
+        be ignored by the trainer.
+        
+        Parameters
+        ----------
+        params_dict : dict
+            Dictionary containing the parameters of the training process.
+        """
         if self.handle_callbacks:
             for callback in self.callbacks_list:
                 callback.on_train_batch_end(params_dict)
 
-    def on_train_batch_end(self, params_dict):
+    def on_train_batch_end(self, params_dict: dict) -> None:
+        """Called at the end of a training batch.
+
+        Call this method for all given callbacks list. Any returned values will
+        be ignored by the trainer.
+        
+        Parameters
+        ----------
+        params_dict : dict
+            Dictionary containing the parameters of the training process.
+        """
         if self.handle_callbacks:
             for callback in self.callbacks_list:
                 callback.on_train_batch_end(params_dict)
 
-    def on_validation_batch_start(self, params_dict):
+    def on_validation_batch_start(self, params_dict: dict) -> None:
+        """Called at the start of a validation batch.
+
+        Call this method for all given callbacks list. Any returned values will
+        be ignored by the trainer.
+        
+        Parameters
+        ----------
+        params_dict : dict
+            Dictionary containing the parameters of the training process.
+        """
         if self.handle_callbacks:
             for callback in self.callbacks_list:
                 callback.on_validation_batch_start(params_dict)
 
-    def on_validation_batch_end(self, params_dict):
+    def on_validation_batch_end(self, params_dict: dict) -> None:
+        """Called at the end of a validation batch.
+
+        Call this method for all given callbacks list. Any returned values will
+        be ignored by the trainer.
+        
+        Parameters
+        ----------
+        params_dict : dict
+            Dictionary containing the parameters of the training process.
+        """
         if self.handle_callbacks:
             for callback in self.callbacks_list:
                 callback.on_validation_batch_end(params_dict)
 
-    def on_epoch_start(self, params_dict):
+    def on_epoch_start(self, params_dict: dict) -> None:
+        """Called at the start of an epoch.
+
+        Call this method for all given callbacks list. Any returned values will
+        be ignored by the trainer.
+        
+        Parameters
+        ----------
+        params_dict : dict
+            Dictionary containing the parameters of the training process.
+        """
         if self.handle_callbacks:
             for callback in self.callbacks_list:
                 callback.on_epoch_start(params_dict)
 
-    def on_epoch_end(self, params_dict):
+    def on_epoch_end(self, params_dict: dict) -> None:
+        """Called at the end of an epoch.
+
+        Call this method for all given callbacks list. Any returned values will
+        be ignored by the trainer.
+        
+        Parameters
+        ----------
+        params_dict : dict
+            Dictionary containing the parameters of the training process.
+        """
         if self.handle_callbacks:
             for callback in self.callbacks_list:
                 callback.on_epoch_end(params_dict)
 
-    def on_fit_start(self, params_dict):
+    def on_fit_start(self, params_dict: dict) -> None:
+        """Called at the start of the fitting process.
+
+        Call this method for all given callbacks list. Any returned values will
+        be ignored by the trainer.
+        
+        Parameters
+        ----------
+        params_dict : dict
+            Dictionary containing the parameters of the training process.
+        """
         if self.handle_callbacks:
             for callback in self.callbacks_list:
                 callback.on_fit_start(params_dict)
 
-    def on_fit_end(self, params_dict):
+    def on_fit_end(self, params_dict: dict) -> None:
+        """Called at the end of the fitting process.
+
+        Call this method for all given callbacks list. Any returned values will
+        be ignored by the trainer.
+        
+        Parameters
+        ----------
+        params_dict : dict
+            Dictionary containing the parameters of the training process.
+        """
         if self.handle_callbacks:
             for callback in self.callbacks_list:
                 callback.on_fit_end(params_dict)
+
+    def reset_parameters(self) -> None:
+        """Reset callback parameters when called.
+
+        If callbacks `self.callbacks_list` is not empty, the called callbacks 
+        must implement `reset_parameters` method.
+        """
+        if self.handle_callbacks:
+            for callback in self.callbacks_list:
+                callback.reset_parameters()

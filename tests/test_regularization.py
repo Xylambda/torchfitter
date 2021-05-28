@@ -42,17 +42,4 @@ def test_L2Regularization(model):
     
     msg = "Error in L2 regularization penalty"
     assert obtained_term == expected_term, msg
-
-
-def test_ElasticNetRegularization(model):
-    regularizer = ElasticNetRegularization(
-        l1_lambda=0.01, 
-        l2_lambda=0.05, 
-        biases=False
-    )
     
-    obtained_term = regularizer(model.named_parameters()).item()
-    expected_term = 0.08146609365940094
-    
-    msg = "Error in Elastic net regularization penalty"
-    assert obtained_term == expected_term, msg

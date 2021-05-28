@@ -1,9 +1,11 @@
 """ PyTorch models fitting package. """
 
 # relative subpackages import
+from . import io
 from . import utils
 from . import trainer
 from . import testing
+from . import manager
 from . import callbacks
 from . import conventions
 from . import regularization

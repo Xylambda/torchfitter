@@ -1,0 +1,135 @@
+""" Module that contains Manager class. """
+import os
+import torch
+import logging
+import torchfitter
+import numpy as np
+
+from pathlib import Path
+from torchfitter import io
+from torchfitter.conventions import ParamsDict
+
+
+
+class Manager:
+    """Manager of Trainers.
+
+    Run different experiments for the given trainer and seeds. An experiment
+    will be runned for each seed. The model must to have the method 
+    'reset_parameters' implemented in order to run the manager.
+
+    Parameters
+    ----------
+    trainer : torchfitter.trainer.Trainer
+    seeds : iterable of int
+        Random seeds for the experiments. A number of experiments equal to 
+        'seeds' iterable length will be runned.
+    model_initial_state : dict
+        Model initial state.
+    optimizer_initial_state : dict
+        Optimizer initial state.
+
+    Warning
+    -------
+    This class has not been tested yet. Unexpected behaviour may occur.
+    """
+    def __init__(
+        self,
+        trainer: torchfitter.trainer.Trainer,
+        seeds: list,
+    ):
+        """
+        raise NotImplementedError(
+            "This class is not currently available to use"
+        )
+        """
+        self.seeds = seeds
+        self.trainer = trainer
+
+        self.save_initial_states(
+            model_state=self.trainer.model.state_dict(), 
+            optim_state=self.trainer.optimizer.state_dict()
+        )
+
+        # set loggin level
+        logging.basicConfig(level=logging.INFO)
+
+    def run_experiments(
+        self,
+        train_loader: torch.utils.data.dataloader.DataLoader,
+        val_loader: torch.utils.data.dataloader.DataLoader,
+        epochs: int
+    ) -> None:  
+        """Run experiments.
+
+        Run multiple experiments for differents seeds and saves the model 
+        parameters, the optimizer state and the history of an experiment.
+
+        Parameters
+        ----------
+        train_loader : torch.DataLoader
+            DataLoader containing train dataset.
+        val_loader : torch.DataLoader
+            DataLoader containing validation dataset.
+        epochs : int
+            Number of training epochs.
+        """
+
+        for seed in self.seeds:
+            self._set_seed(seed)
+
+            # fit model
+            self.trainer.fit(train_loader, val_loader, epochs)
+
+            # save experiment
+            self.save_experiment(seed=seed)
+
+            # reset trainer parameters
+            self.reset_parameters()
+
+            logging.info(f'Ending training on seed {seed}')
+
+    def reset_parameters(self) -> None:
+        # reset model
+        self.trainer.reset_parameters(
+            reset_callbacks=True, reset_model=True
+        )
+
+        # self.trainer.model.reset_parameters()
+
+        # reset optimizer
+        self.trainer.optimizer.load_state_dict(
+            torch.load('optimizer_initial_state.pt')
+        )
+
+    def _set_seed(self, seed: int) -> None:
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+
+    def save_initial_states(
+        self, model_state: dict, optim_state: dict
+    ) -> None:
+        torch.save(model_state, 'model_initial_state.pt')
+        torch.save(optim_state, 'optimizer_initial_state.pt')
+
+    def save_experiment(self, seed):
+        """
+        Save experiment results in a folder.
+        """
+        # create folder
+        _name = f"experiment_{seed}"
+        folder_name = Path(_name)
+
+        if _name in os.listdir():
+            pass
+        else:
+            os.mkdir(folder_name)
+
+        _model_path = folder_name / 'model_parameters.pt'
+        torch.save(self.trainer.model.state_dict(), _model_path)
+
+        _optim_path = folder_name / 'optim_parameters.pt'
+        torch.save(self.trainer.optimizer.state_dict(), _optim_path)
+
+        _history_path = folder_name / 'history.pkl'
+        io.save_pickle(self.trainer.params_dict[ParamsDict.HISTORY], _history_path)

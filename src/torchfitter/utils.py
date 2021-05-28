@@ -9,6 +9,7 @@ from torch.utils.data import Dataset
 class DataWrapper(Dataset):
     """
     Class to wrap a dataset. Assumes X and y are torch.Tensors or numpy.arrays.
+    The DataWrapper will access the elements by indexing the first axis.
 
     Parameters
     ----------
@@ -66,40 +67,13 @@ def numpy_to_torch(array, dtype):
     return getattr(torch.from_numpy(array), dtype)()
 
 
-def save_pickle(obj, path, protocol=pickle.HIGHEST_PROTOCOL):
+def check_model_on_cuda(model) -> bool:
     """
-    Save given object as pickle.
+    Check if the model is stored in a cuda device.
 
-    Parameters
-    ----------
-    obj : object
-        Object to save.
-    path : str or Path
-        Path where to save the pickle.
-    protocol : int, optional, default: pickle.HIGHEST_PROTOCOL
-        Used pickle protocol.
-
+    Return
+    ------
+    bool
+        True if the model is stored on a cuda device.
     """
-    with open(path, 'wb') as handle:
-        pickle.dump(obj, handle, protocol=protocol)
-
-
-def load_pickle(path):
-    """
-    Load saved pickle.
-
-    Parameters
-    ----------
-    path : str or Path
-        Path where to save the pickle.
-
-    Returns
-    -------
-    obj : object
-        Loaded object.
-
-    """
-    with open(path, 'rb') as handle:
-        obj = pickle.load(handle)
-
-    return obj
+    return next(model.parameters()).is_cuda

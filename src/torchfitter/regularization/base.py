@@ -1,4 +1,4 @@
-import torch
+""" Base class for implementing regularization procedures, """
 
 
 class RegularizerBase:
@@ -19,8 +19,8 @@ class RegularizerBase:
         self.rate = regularization_rate
         self.biases = biases
 
-    def __call__(self, named_parameters):
-        return self.compute_penalty(named_parameters)
+    def __call__(self, named_parameters, device):
+        return self.compute_penalty(named_parameters, device)
 
-    def compute_penalty(self, named_parameters):
+    def compute_penalty(self, named_parameters, device):
         raise NotImplementedError()

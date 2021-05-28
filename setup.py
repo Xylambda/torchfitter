@@ -24,6 +24,5 @@ setup(
         "numpy",
         "torch>=1.1.0",
         "tqdm",
-        "scikit-learn"
     ],
 )
