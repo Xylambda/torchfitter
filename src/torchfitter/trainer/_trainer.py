@@ -94,7 +94,7 @@ class Trainer:
         # define progress bar
         initial_epoch = self.params_dict[ParamsDict.EPOCH_NUMBER]
         pbar = tqdm(
-            range(initial_epoch, epochs),
+            range(initial_epoch, epochs+1),
             ascii=True,
             unit=' epoch',
             bar_format=self.__bar_format,
@@ -168,6 +168,14 @@ class Trainer:
             self.params_dict[key] = value
 
     def _update_history(self, **kwargs):
+        """
+        Update history paramaters dictionary with the passed key-value pairs.
+
+        Parameters
+        ----------
+        kwargs : dict
+            Dictionary with keys to update.
+        """
         for key, value in kwargs.items():
             self.params_dict[ParamsDict.HISTORY][key].append(value)
 

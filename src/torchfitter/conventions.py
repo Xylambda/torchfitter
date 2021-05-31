@@ -53,3 +53,19 @@ class ParamsDict:
     HISTORY_VAL_LOSS = "validation_loss"
     HISTORY_LR = "learning_rate"
     PROG_BAR = 'progress_bar'
+
+
+class ManagerParamsDict:
+    """
+    Conventions for the internal parameters of torchfitter.manager.Manager 
+    class.
+
+    Attributes
+    ----------
+    CURRENT_SEED : str
+        Current seed that is being processed.
+    SEED_LIST : str
+        Seeds list. Each seed is an experiment.
+    """
+    CURRENT_SEED = 'current_seed'
+    SEED_LIST = 'seed_list'

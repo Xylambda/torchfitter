@@ -1,13 +1,14 @@
 """ Module that contains Manager class. """
 import os
 import torch
+import shutil
 import logging
 import torchfitter
 import numpy as np
 
 from pathlib import Path
 from torchfitter import io
-from torchfitter.conventions import ParamsDict
+from torchfitter.conventions import ParamsDict, ManagerParamsDict
 
 
 
@@ -51,15 +52,70 @@ class Manager:
             optim_state=self.trainer.optimizer.state_dict()
         )
 
+        self.params_dict = self._initialize_params_dict()
+
         # set loggin level
         logging.basicConfig(level=logging.INFO)
+
+    def _initialize_params_dict(self):
+        params_dict = {
+            ManagerParamsDict.SEED_LIST: self.seeds,
+            ManagerParamsDict.CURRENT_SEED: None
+        }
+
+        return params_dict
+
+
+    def on_experiments_begin(self, params_dict):
+        """Called at the start of the experiments loop.
+        """
+        pass
+
+    def on_experiment_seed_begin(self, params_dict):
+        """Called at the start of a particular experiment.
+        """
+        pass
+
+    def on_experiment_seed_end(self, params_dict):
+        """Called at the end of a particular experiments.
+        """
+        seed = params_dict[ManagerParamsDict.CURRENT_SEED]
+        self.save_experiment(seed=seed)
+
+        # reset trainer parameters
+        self.reset_parameters()
+
+        # move saved checkpoint
+        new_path = Path(f"experiment_{seed}/best_parameters.pt")
+        old_path = Path("checkpoint.pt")
+
+        shutil.move(old_path, new_path)
+
+        logging.info(f'Ending training on seed {seed}')
+
+    def on_experiments_end(self, params_dict):
+        """Called at the end of the experiments loop.
+        """
+        pass
+
+    def _update_params_dict(self, **kwargs):
+        """
+        Update paramaters dictionary with the passed key-value pairs.
+
+        Parameters
+        ----------
+        kwargs : dict
+            Dictionary with keys to update.
+        """
+        for key, value in kwargs.items():
+            self.params_dict[key] = value
 
     def run_experiments(
         self,
         train_loader: torch.utils.data.dataloader.DataLoader,
         val_loader: torch.utils.data.dataloader.DataLoader,
         epochs: int
-    ) -> None:  
+    ) -> None:
         """Run experiments.
 
         Run multiple experiments for differents seeds and saves the model 
@@ -74,28 +130,28 @@ class Manager:
         epochs : int
             Number of training epochs.
         """
+        self.on_experiments_begin(self.params_dict)
 
         for seed in self.seeds:
             self._set_seed(seed)
+            self._update_params_dict(
+                **{ManagerParamsDict.CURRENT_SEED: seed}
+            )
+
+            self.on_experiment_seed_begin(self.params_dict)
 
             # fit model
             self.trainer.fit(train_loader, val_loader, epochs)
 
-            # save experiment
-            self.save_experiment(seed=seed)
+            self.on_experiment_seed_end(self.params_dict)
 
-            # reset trainer parameters
-            self.reset_parameters()
-
-            logging.info(f'Ending training on seed {seed}')
+        self.on_experiments_end(self.params_dict)
 
     def reset_parameters(self) -> None:
         # reset model
         self.trainer.reset_parameters(
             reset_callbacks=True, reset_model=True
         )
-
-        # self.trainer.model.reset_parameters()
 
         # reset optimizer
         self.trainer.optimizer.load_state_dict(
