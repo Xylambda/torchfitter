@@ -4,5 +4,6 @@ from . import base
 from ._callbacks import (
     EarlyStopping,
     LoggerCallback,
+    ExperimentSaver,
     LearningRateScheduler,
 )

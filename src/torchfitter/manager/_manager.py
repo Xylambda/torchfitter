@@ -1,15 +1,11 @@
 """ Module that contains Manager class. """
-import os
 import torch
-import shutil
 import logging
 import torchfitter
 import numpy as np
 
-from pathlib import Path
-from torchfitter import io
-from torchfitter.conventions import ParamsDict, ManagerParamsDict
-
+from torchfitter.conventions import ManagerParamsDict, ParamsDict
+from torchfitter.callbacks.base import ManagerCallbackHandler
 
 
 class Manager:
@@ -38,21 +34,22 @@ class Manager:
         self,
         trainer: torchfitter.trainer.Trainer,
         seeds: list,
+        callbacks: list=None
     ):
-        """
-        raise NotImplementedError(
-            "This class is not currently available to use"
-        )
-        """
         self.seeds = seeds
         self.trainer = trainer
+        self.callbacks_list = callbacks
 
         self.save_initial_states(
             model_state=self.trainer.model.state_dict(), 
             optim_state=self.trainer.optimizer.state_dict()
         )
 
+        # attributes
         self.params_dict = self._initialize_params_dict()
+        self.callback_handler = ManagerCallbackHandler(
+            callbacks_list=self.callbacks_list
+        )
 
         # set loggin level
         logging.basicConfig(level=logging.INFO)
@@ -60,43 +57,13 @@ class Manager:
     def _initialize_params_dict(self):
         params_dict = {
             ManagerParamsDict.SEED_LIST: self.seeds,
-            ManagerParamsDict.CURRENT_SEED: None
+            ManagerParamsDict.CURRENT_SEED: None,
+            ManagerParamsDict.MODEL_STATE: None,
+            ManagerParamsDict.OPTIMIZER_STATE: None,
+            ManagerParamsDict.HISTORY: None
         }
 
         return params_dict
-
-
-    def on_experiments_begin(self, params_dict):
-        """Called at the start of the experiments loop.
-        """
-        pass
-
-    def on_experiment_seed_begin(self, params_dict):
-        """Called at the start of a particular experiment.
-        """
-        pass
-
-    def on_experiment_seed_end(self, params_dict):
-        """Called at the end of a particular experiments.
-        """
-        seed = params_dict[ManagerParamsDict.CURRENT_SEED]
-        self.save_experiment(seed=seed)
-
-        # reset trainer parameters
-        self.reset_parameters()
-
-        # move saved checkpoint
-        new_path = Path(f"experiment_{seed}/best_parameters.pt")
-        old_path = Path("checkpoint.pt")
-
-        shutil.move(old_path, new_path)
-
-        logging.info(f'Ending training on seed {seed}')
-
-    def on_experiments_end(self, params_dict):
-        """Called at the end of the experiments loop.
-        """
-        pass
 
     def _update_params_dict(self, **kwargs):
         """
@@ -130,7 +97,7 @@ class Manager:
         epochs : int
             Number of training epochs.
         """
-        self.on_experiments_begin(self.params_dict)
+        self.callback_handler.on_experiments_begin(self.params_dict)
 
         for seed in self.seeds:
             self._set_seed(seed)
@@ -138,14 +105,20 @@ class Manager:
                 **{ManagerParamsDict.CURRENT_SEED: seed}
             )
 
-            self.on_experiment_seed_begin(self.params_dict)
-
             # fit model
+            self.callback_handler.on_seed_experiment_begin(self.params_dict)
             self.trainer.fit(train_loader, val_loader, epochs)
+            self._update_params_dict(
+                **{
+                    ManagerParamsDict.MODEL_STATE: self.trainer.model.state_dict(),
+                    ManagerParamsDict.OPTIMIZER_STATE: self.trainer.optimizer.state_dict(),
+                    ManagerParamsDict.HISTORY: self.trainer.params_dict[ParamsDict.HISTORY]
+                }
+            )
+            self.callback_handler.on_seed_experiment_end(self.params_dict)
+            self.reset_parameters()
 
-            self.on_experiment_seed_end(self.params_dict)
-
-        self.on_experiments_end(self.params_dict)
+        self.callback_handler.on_experiments_end(self.params_dict)
 
     def reset_parameters(self) -> None:
         # reset model
@@ -167,25 +140,3 @@ class Manager:
     ) -> None:
         torch.save(model_state, 'model_initial_state.pt')
         torch.save(optim_state, 'optimizer_initial_state.pt')
-
-    def save_experiment(self, seed):
-        """
-        Save experiment results in a folder.
-        """
-        # create folder
-        _name = f"experiment_{seed}"
-        folder_name = Path(_name)
-
-        if _name in os.listdir():
-            pass
-        else:
-            os.mkdir(folder_name)
-
-        _model_path = folder_name / 'model_parameters.pt'
-        torch.save(self.trainer.model.state_dict(), _model_path)
-
-        _optim_path = folder_name / 'optim_parameters.pt'
-        torch.save(self.trainer.optimizer.state_dict(), _optim_path)
-
-        _history_path = folder_name / 'history.pkl'
-        io.save_pickle(self.trainer.params_dict[ParamsDict.HISTORY], _history_path)

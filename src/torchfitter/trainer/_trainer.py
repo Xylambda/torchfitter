@@ -47,7 +47,7 @@ class Trainer:
         optimizer: torch.optim.Optimizer,
         regularizer=None,
         device=None,
-        callbacks: list =None,
+        callbacks: list=None,
     ):
         self.criterion = criterion
         self.optimizer = optimizer

@@ -14,6 +14,7 @@ class Callback:
 
     def __init__(self):
         logging.basicConfig(level=logging.INFO)
+        self.callback_type = '<Trainer class>'
 
     def on_train_batch_start(self, params_dict: dict) -> None:
         """Called at the start of a training batch.
@@ -135,7 +136,8 @@ class Callback:
 
 
 class CallbackHandler(Callback):
-    """
+    """Trainer callback handler.
+
     Class to handle callbacks during the training process. This class is itself
     a callback.
 
@@ -154,7 +156,18 @@ class CallbackHandler(Callback):
         elif not isinstance(callbacks_list, list):
             raise TypeError("Callbacks must be a list of callbacks")
 
+        # ensure callbacks are of trainer type
+        self._check_callback_type(callbacks_list=callbacks_list)
         self.callbacks_list = callbacks_list
+    
+    def _check_callback_type(self, callbacks_list: list):
+        for callback in callbacks_list:
+            if callback.callback_type != '<Trainer class>':
+                raise ValueError(
+                    f"Trainer callback handler can only process callbacks of "
+                    "type '<Trainer class>' but {callback.callback_type} was"
+                    " passed."
+                )
 
     def on_train_batch_start(self, params_dict: dict) -> None:
         """Called at the start of a training batch.
@@ -285,3 +298,159 @@ class CallbackHandler(Callback):
         if self.handle_callbacks:
             for callback in self.callbacks_list:
                 callback.reset_parameters()
+
+
+class ManagerCallback:
+    """
+    Manager base callback class.
+    """
+    def __init__(self) -> None:
+        logging.basicConfig(level=logging.INFO)
+        self.callback_type = '<Manager class>'
+
+    def on_experiments_begin(self, params_dict: dict) -> None:
+        """Called at the start of the experiments.
+
+        Subclasses should override for any actions to run. The trainer ignores
+        any returned values from this function.
+
+        Parameters
+        ----------
+        params_dict : dict
+            Dictionary containing the parameters of the managing process.
+        """
+        pass
+
+    def on_experiments_end(self, params_dict: dict) -> None:
+        """Called at the end of the experiments.
+
+        Subclasses should override for any actions to run. The trainer ignores
+        any returned values from this function.
+
+        Parameters
+        ----------
+        params_dict : dict
+            Dictionary containing the parameters of the managing process.
+        """
+        pass
+
+    def on_seed_experiment_begin(self, params_dict: dict) -> None:
+        """Called at the start of a single experiment.
+
+        Subclasses should override for any actions to run. The trainer ignores
+        any returned values from this function.
+
+        Parameters
+        ----------
+        params_dict : dict
+            Dictionary containing the parameters of the managing process.
+        """
+        pass
+
+    def on_seed_experiment_end(self, params_dict: dict) -> None:
+        """Called at the end of a single experiment.
+
+        Subclasses should override for any actions to run. The trainer ignores
+        any returned values from this function.
+
+        Parameters
+        ----------
+        params_dict : dict
+            Dictionary containing the parameters of the managing process.
+        """
+        pass
+
+
+class ManagerCallbackHandler(ManagerCallback):
+    """Manager callback handler.
+
+    Class to handle callbacks during the managing process. This class is itself
+    a callback.
+
+    Parameters
+    ----------
+    callbacks_list : list of torchfitter.callback.ManagerCallback
+        List of callbacks to handle.
+    """
+
+    def __init__(self, callbacks_list):
+        self.handle_callbacks = True
+
+        if callbacks_list is None:
+            self.handle_callbacks = False
+
+        elif not isinstance(callbacks_list, list):
+            raise TypeError("Callbacks must be a list of callbacks")
+
+        # ensure callbacks are of manager type
+        self._check_callback_type(callbacks_list=callbacks_list)
+        self.callbacks_list = callbacks_list
+
+    def _check_callback_type(self, callbacks_list: list):
+        for callback in callbacks_list:
+            if callback.callback_type != '<Manager class>':
+                raise ValueError(
+                    f"Manager callback handler can only process callbacks of "
+                    "type '<Manager class>' but {callback.callback_type} was"
+                    " passed."
+                )
+
+    def on_experiments_begin(self, params_dict: dict) -> None:
+        """Called at the start of the experiments.
+
+        Call this method for all given callbacks list. Any returned values will
+        be ignored by the trainer.
+
+        Parameters
+        ----------
+        params_dict : dict
+            Dictionary containing the parameters of the managing process.
+        """
+        if self.handle_callbacks:
+            for callback in self.callbacks_list:
+                callback.on_experiments_begin(params_dict)
+
+    def on_experiments_end(self, params_dict: dict) -> None:
+        """Called at the end of the experiments.
+
+        Call this method for all given callbacks list. Any returned values will
+        be ignored by the trainer.
+
+        Parameters
+        ----------
+        params_dict : dict
+            Dictionary containing the parameters of the managing process.
+        """
+        if self.handle_callbacks:
+            for callback in self.callbacks_list:
+                callback.on_experiments_end(params_dict)
+
+    def on_seed_experiment_begin(self, params_dict: dict) -> None:
+        """Called at the start of a single experiment.
+
+        Call this method for all given callbacks list. Any returned values will
+        be ignored by the trainer.
+
+        Parameters
+        ----------
+        params_dict : dict
+            Dictionary containing the parameters of the managing process.
+        """
+        if self.handle_callbacks:
+            for callback in self.callbacks_list:
+                callback.on_seed_experiment_begin(params_dict)
+
+    def on_seed_experiment_end(self, params_dict: dict) -> None:
+        """Called at the end of a single experiment.
+
+        Call this method for all given callbacks list. Any returned values will
+        be ignored by the trainer.
+
+        Parameters
+        ----------
+        params_dict : dict
+            Dictionary containing the parameters of the managing process.
+        """
+        if self.handle_callbacks:
+            for callback in self.callbacks_list:
+                callback.on_seed_experiment_end(params_dict)
