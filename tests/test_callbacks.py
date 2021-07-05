@@ -72,8 +72,8 @@ def train_config():
 
 def test_earlystopping(train_config):
     (
-        train_loader,
-        val_loader,
+        _,
+        _,
         model,
         criterion,
         optimizer,

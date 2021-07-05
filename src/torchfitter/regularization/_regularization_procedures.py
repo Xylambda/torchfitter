@@ -1,4 +1,5 @@
 import torch
+from typing import Union
 from .base import RegularizerBase
 
 
@@ -61,7 +62,7 @@ class L2Regularization(RegularizerBase):
     rate.
     """
 
-    def __init__(self, regularization_rate, biases=False):
+    def __init__(self, regularization_rate: float, biases: bool = False):
         super(L2Regularization, self).__init__(regularization_rate, biases)
 
     def __repr__(self):
@@ -71,7 +72,7 @@ class L2Regularization(RegularizerBase):
         )"""
         return rpr
 
-    def compute_penalty(self, named_parameters, device):
+    def compute_penalty(self, named_parameters, device: Union[str, torch.device]):
         # Initialize with tensor, cannot be scalar
         penalty_term = torch.zeros(1, 1, requires_grad=True).to(device)
 
@@ -82,3 +83,5 @@ class L2Regularization(RegularizerBase):
                 penalty_term = penalty_term + param.norm(p=2)
 
         return self.rate * penalty_term
+
+# https://elvex.ugr.es/decsai/deep-learning/slides/NN5%20Regularization.pdf

@@ -1,6 +1,7 @@
 import torch
+import pytest
 import numpy as np
-from torchfitter.utils import DataWrapper, numpy_to_torch
+from torchfitter.utils import DataWrapper, numpy_to_torch, FastTensorDataLoader
 
 
 def test_datawrapper():
@@ -25,3 +26,8 @@ def test_numpy_to_torch():
 
     msg = f"Torch tensor should be 'torch.float32' but '{tensor.dtype}' found"
     assert tensor.dtype == torch.float32, msg
+
+
+@pytest.mark.xfail
+def test_fast_tensor_dataloader():
+    pass
