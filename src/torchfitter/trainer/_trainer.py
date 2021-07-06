@@ -5,8 +5,7 @@ import warnings
 import statistics
 
 from tqdm.auto import tqdm
-import torchfitter
-from torchfitter.conventions import ParamsDict
+from torchfitter.conventions import ParamsDict, BAR_FORMAT
 from torchfitter.callbacks.base import CallbackHandler
 
 
@@ -61,12 +60,7 @@ class Trainer:
         self.callback_handler = CallbackHandler(
             callbacks_list=self.callbacks_list
         )
-
-        # ----- create bar format ------
-        r_bar = '| {n_fmt}/{total_fmt} | {rate_noinv_fmt}{postfix}, ramaining_time: {remaining} s'
-        left = "{l_bar}{bar}"
-        bar_fmt = f"{left}{r_bar}"
-        self.__bar_format = bar_fmt
+        self.__bar_format = BAR_FORMAT
 
         logging.basicConfig(level=logging.INFO)
 

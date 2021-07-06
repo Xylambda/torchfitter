@@ -1,9 +1,9 @@
 """ Abstractions to interact with models. """
 
 from . import base
-from ._callbacks import (
+from ._manager_callbacks import ExperimentSaver
+from ._trainer_callbacks import (
     EarlyStopping,
     LoggerCallback,
-    ExperimentSaver,
-    LearningRateScheduler,
+    LearningRateScheduler
 )

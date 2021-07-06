@@ -81,3 +81,10 @@ class ManagerParamsDict:
     MODEL_STATE = 'model_state'
     OPTIMIZER_STATE = 'optim_state'
     HISTORY = 'history'
+
+
+# ----- create bar format ------
+r_bar = '| {n_fmt}/{total_fmt} | {rate_noinv_fmt}{postfix}, time_remaining: {remaining} s'
+left = "{l_bar}{bar}"
+bar_fmt = f"{left}{r_bar}"
+BAR_FORMAT = f"{left}{r_bar}"

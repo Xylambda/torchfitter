@@ -1,12 +1,8 @@
-""" """
-import os
+""" Callbacks for the manager class """
 import torch
-import shutil
 import logging
-from pathlib import Path
-from .base import Callback, ManagerCallback
-from torchfitter import io
-from torchfitter.conventions import ParamsDict, ManagerParamsDict
+from .base import Callback
+from torchfitter.conventions import ParamsDict
 
 
 class EarlyStopping(Callback):
@@ -154,7 +150,7 @@ class LearningRateScheduler(Callback):
 
     `LearningRateScheduler` provides an easy abstraction to schedule the
     learning rate of the optimizer by calling `scheduler.step()` after the
-    training batch has been performed.
+    training step has been performed.
 
     Parameters
     ----------
@@ -185,15 +181,12 @@ class LearningRateScheduler(Callback):
     def __repr__(self) -> str:
         return f"LearningRateScheduler(scheduler={self.scheduler}, metric={self.metric})"
 
-    def on_train_batch_end(self, params_dict):
-        if params_dict[ParamsDict.EPOCH_NUMBER] == 1:
-            pass
+    def on_train_step_end(self, params_dict):
+        if self.metric is None:
+            self.scheduler.step()
         else:
-            if self.metric is None:
-                self.scheduler.step()
-            else:
-                metric = params_dict[self.metric]
-                self.scheduler.step(metric)
+            metric = params_dict[self.metric]
+            self.scheduler.step(metric)
 
     def reset_parameters(self) -> None:
         for key, value in self.__restart_dict.items():
@@ -203,83 +196,26 @@ class LearningRateScheduler(Callback):
                 self.__dict__[key] = value
 
 
-class ExperimentSaver(ManagerCallback):
+class ReduceLROnPlateau(Callback):
     """
-    Callback to save the results of a given experiment. This callback assumes 
-    the use of an Early Stopping callback that saves a checkpoint in path
-    'checkpoint_path'.
-
-    By default, the ExperimentSaver stores the results in the path where the 
-    manager is being runned.
-
     Parameters
     ----------
-    checkpoint_path : str or Path
-        Path where to find the Early Stopping callback checkpoint.
-    folder_name : str, optional, default: 'experiment'
-        Name of the folder.
+    scheduler : torch.optim.Scheduler
+        Scheduler.
     """
-    def __init__(
-        self, 
-        checkpoint_path="checkpoint.pt", 
-        folder_name='experiment'
-    ) -> None:
+    def __init__(self, scheduler):
+        super(ReduceLROnPlateau, self).__init__()
 
-        super(ExperimentSaver, self).__init__()
-
-        self.folder_name = folder_name
-        self.checkpoint_path = checkpoint_path
-
-    def __repr__(self) -> str:
-        return f"ExperimentSaver(checkpoint_path={self.checkpoint_path}, folder_name={self.folder_name})"
-
-    def on_seed_experiment_end(self, params_dict: dict):
-        seed = params_dict[ManagerParamsDict.CURRENT_SEED]
-        model_state = params_dict[ManagerParamsDict.MODEL_STATE]
-        optimizer_state = params_dict[ManagerParamsDict.OPTIMIZER_STATE]
-        history = params_dict[ManagerParamsDict.HISTORY]
-
-        self._save_experiment(
-            seed=seed, 
-            model_state=model_state, 
-            optimizer_state=optimizer_state,
-            history=history
+        self.scheduler = scheduler
+        self.__restart_dict = dict(
+            (k, self.scheduler.__dict__[k]) for k in self.scheduler.__dict__.keys() if k != 'optimizer'
         )
-
-        # move saved checkpoint
-        new_path = Path(f"{self.folder_name}_{seed}/best_parameters.pt")
-        old_path = Path(self.checkpoint_path)
-        shutil.move(old_path, new_path)
-
-        logging.info(f'Ending training on seed {seed}')
-
-    def _save_experiment(
-        self, 
-        seed: int,
-        history: dict,
-        model_state: torch.nn.Module, 
-        optimizer_state: torch.optim.Optimizer
-    ) -> None:
-        """
-        Helper function
-        """
-        # create folder
-        _name = f"{self.folder_name}_{seed}"
-        folder_name = Path(_name)
-
-        if _name in os.listdir():
-            pass
-        else:
-            os.mkdir(folder_name)
-
-        _model_path = folder_name / 'model_parameters.pt'
-        torch.save(model_state, _model_path)
-
-        _optim_path = folder_name / 'optim_parameters.pt'
-        torch.save(optimizer_state, _optim_path)
-
-        _history_path = folder_name / 'history.pkl'
-        io.save_pickle(
-            history,
-            _history_path
-        )
+        
+    def on_train_step_end(self, params_dict):
+        # we apply the scheduler over the training loss
+        metric = params_dict[ParamsDict.TRAIN_LOSS]
+        self.scheduler.step(metric)
+            
+    def reset_parameters(self):
+        for key, value in self.__restart_dict.items():
+            self.scheduler.__dict__[key] = value

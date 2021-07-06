@@ -16,8 +16,8 @@ class Callback:
         logging.basicConfig(level=logging.INFO)
         self.callback_type = '<Trainer class>'
 
-    def on_train_batch_start(self, params_dict: dict) -> None:
-        """Called at the start of a training batch.
+    def on_train_step_start(self, params_dict: dict) -> None:
+        """Called at the start of a training step.
 
         Subclasses should override for any actions to run. The trainer ignores
         any returned values from this function.
@@ -29,8 +29,8 @@ class Callback:
         """
         pass
 
-    def on_train_batch_end(self, params_dict: dict) -> None:
-        """Called at the end of a training batch.
+    def on_train_step_end(self, params_dict: dict) -> None:
+        """Called at the end of a training step.
 
         Subclasses should override for any actions to run. The trainer ignores
         any returned values from this function.
@@ -42,8 +42,8 @@ class Callback:
         """
         pass
 
-    def on_validation_batch_start(self, params_dict: dict) -> None:
-        """Called at the start of a validation batch.
+    def on_validation_step_start(self, params_dict: dict) -> None:
+        """Called at the start of a validation step.
 
         Subclasses should override for any actions to run. The trainer ignores
         any returned values from this function.
@@ -55,8 +55,8 @@ class Callback:
         """
         pass
 
-    def on_validation_batch_end(self, params_dict: dict) -> None:
-        """Called at the end of a validation batch.
+    def on_validation_step_end(self, params_dict: dict) -> None:
+        """Called at the end of a validation step.
 
         Subclasses should override for any actions to run. The trainer ignores
         any returned values from this function.
@@ -169,8 +169,8 @@ class CallbackHandler(Callback):
                     " passed."
                 )
 
-    def on_train_batch_start(self, params_dict: dict) -> None:
-        """Called at the start of a training batch.
+    def on_train_step_start(self, params_dict: dict) -> None:
+        """Called at the start of a training step.
 
         Call this method for all given callbacks list. Any returned values will
         be ignored by the trainer.
@@ -182,25 +182,10 @@ class CallbackHandler(Callback):
         """
         if self.handle_callbacks:
             for callback in self.callbacks_list:
-                callback.on_train_batch_end(params_dict)
+                callback.on_train_step_start(params_dict)
 
-    def on_train_batch_end(self, params_dict: dict) -> None:
-        """Called at the end of a training batch.
-
-        Call this method for all given callbacks list. Any returned values will
-        be ignored by the trainer.
-        
-        Parameters
-        ----------
-        params_dict : dict
-            Dictionary containing the parameters of the training process.
-        """
-        if self.handle_callbacks:
-            for callback in self.callbacks_list:
-                callback.on_train_batch_end(params_dict)
-
-    def on_validation_batch_start(self, params_dict: dict) -> None:
-        """Called at the start of a validation batch.
+    def on_train_step_end(self, params_dict: dict) -> None:
+        """Called at the end of a training step.
 
         Call this method for all given callbacks list. Any returned values will
         be ignored by the trainer.
@@ -212,10 +197,10 @@ class CallbackHandler(Callback):
         """
         if self.handle_callbacks:
             for callback in self.callbacks_list:
-                callback.on_validation_batch_start(params_dict)
+                callback.on_train_step_end(params_dict)
 
-    def on_validation_batch_end(self, params_dict: dict) -> None:
-        """Called at the end of a validation batch.
+    def on_validation_step_start(self, params_dict: dict) -> None:
+        """Called at the start of a validation step.
 
         Call this method for all given callbacks list. Any returned values will
         be ignored by the trainer.
@@ -227,7 +212,22 @@ class CallbackHandler(Callback):
         """
         if self.handle_callbacks:
             for callback in self.callbacks_list:
-                callback.on_validation_batch_end(params_dict)
+                callback.on_validation_step_start(params_dict)
+
+    def on_validation_step_end(self, params_dict: dict) -> None:
+        """Called at the end of a validation step.
+
+        Call this method for all given callbacks list. Any returned values will
+        be ignored by the trainer.
+        
+        Parameters
+        ----------
+        params_dict : dict
+            Dictionary containing the parameters of the training process.
+        """
+        if self.handle_callbacks:
+            for callback in self.callbacks_list:
+                callback.on_validation_step_end(params_dict)
 
     def on_epoch_start(self, params_dict: dict) -> None:
         """Called at the start of an epoch.
