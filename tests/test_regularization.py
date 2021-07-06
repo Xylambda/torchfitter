@@ -5,14 +5,13 @@ import torch.nn as nn
 from torchfitter.regularization import (
     L1Regularization,
     L2Regularization,
-    ElasticNetRegularization
 )
 
 from torchfitter.testing import change_model_params
 
 
 @pytest.fixture
-def model():
+def model_config():
     model = nn.Linear(2,2)
 
     # change weights and biases
@@ -24,17 +23,19 @@ def model():
     return model
 
 
-def test_L1Regularization(model):
+def test_L1Regularization(model_config):
+    model, device = model_config()
     regularizer = L1Regularization(regularization_rate=0.01, biases=False)
     
-    obtained_term = regularizer(model.named_parameters()).item()
+    obtained_term = regularizer(model.named_parameters(), device='gpu').item()
     expected_term = 0.022014999762177467
     
     msg = "Error in L1 regularization penalty"
     assert obtained_term == expected_term, msg
 
 
-def test_L2Regularization(model):
+def test_L2Regularization(model_config):
+    model, device = model_config()
     regularizer = L2Regularization(regularization_rate=0.01, biases=False)
     
     obtained_term = regularizer(model.named_parameters()).item()

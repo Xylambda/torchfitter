@@ -111,14 +111,14 @@ class Trainer:
             epoch_start_time = time.time()
 
             # train
-            self.callback_handler.on_train_batch_start(self.params_dict)
+            self.callback_handler.on_train_step_start(self.params_dict)
             tr_loss = self.train_step(train_loader)
-            self.callback_handler.on_train_batch_end(self.params_dict)
+            self.callback_handler.on_train_step_end(self.params_dict)
 
             # validation
-            self.callback_handler.on_validation_batch_start(self.params_dict)
+            self.callback_handler.on_validation_step_start(self.params_dict)
             val_loss = self.validation_step(val_loader)
-            self.callback_handler.on_validation_batch_end(self.params_dict)
+            self.callback_handler.on_validation_step_end(self.params_dict)
 
             self._update_history(
                 **{
