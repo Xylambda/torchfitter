@@ -262,13 +262,12 @@ class Trainer:
         self.model.train()
 
         losses = []  # loss as mean of batch losses
-
-        for idx, (features, labels) in enumerate(loader):
+        for features, labels in loader:
             # forward pass and loss
             out = self.model(features.to(self.device))
             loss = self.compute_loss(out, labels.to(self.device))
             
-            # clean gradients, backpropagation and params. update
+            # clean gradients, backpropagation and parameters update
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
@@ -297,9 +296,8 @@ class Trainer:
         self.model.eval()
 
         losses = []  # loss as mean of batch losses
-
         with torch.no_grad():
-            for idx, (features, labels) in enumerate(loader):
+            for features, labels in loader:
                 out = self.model(features.to(self.device))
                 loss = self.compute_loss(out, labels.to(self.device))
 

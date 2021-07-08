@@ -93,7 +93,7 @@ def test_earlystopping(train_config):
     early_stopping.on_fit_start(params_dict)
 
     for i in range(0, 20):
-        params_dict[ParamsDict.VAL_LOS] = 1
+        params_dict[ParamsDict.VAL_LOSS] = 1
         params_dict[ParamsDict.EPOCH_NUMBER] = i
 
         early_stopping.on_epoch_end(params_dict)

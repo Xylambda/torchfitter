@@ -161,13 +161,14 @@ class CallbackHandler(Callback):
         self.callbacks_list = callbacks_list
     
     def _check_callback_type(self, callbacks_list: list):
-        for callback in callbacks_list:
-            if callback.callback_type != '<Trainer class>':
-                raise ValueError(
-                    f"Trainer callback handler can only process callbacks of "
-                    "type '<Trainer class>' but {callback.callback_type} was"
-                    " passed."
-                )
+        if self.handle_callbacks:
+            for callback in callbacks_list:
+                if callback.callback_type != '<Trainer class>':
+                    raise ValueError(
+                        f"Trainer callback handler can only process callbacks of "
+                        "type '<Trainer class>' but {callback.callback_type} was"
+                        " passed."
+                    )
 
     def on_train_step_start(self, params_dict: dict) -> None:
         """Called at the start of a training step.
@@ -387,13 +388,14 @@ class ManagerCallbackHandler(ManagerCallback):
         self.callbacks_list = callbacks_list
 
     def _check_callback_type(self, callbacks_list: list):
-        for callback in callbacks_list:
-            if callback.callback_type != '<Manager class>':
-                raise ValueError(
-                    f"Manager callback handler can only process callbacks of "
-                    "type '<Manager class>' but {callback.callback_type} was"
-                    " passed."
-                )
+        if self.handle_callbacks:
+            for callback in callbacks_list:
+                if callback.callback_type != '<Manager class>':
+                    raise ValueError(
+                        f"Manager callback handler can only process callbacks of "
+                        "type '<Manager class>' but {callback.callback_type} was"
+                        " passed."
+                    )
 
     def on_experiments_begin(self, params_dict: dict) -> None:
         """Called at the start of the experiments.
