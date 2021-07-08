@@ -149,7 +149,7 @@ class ModelSaver(Callback):
     def on_epoch_end(self, params_dict):
         epoch = params_dict[ParamsDict.EPOCH_NUMBER]
         model = params_dict[ParamsDict.MODEL]
-        torch.save(model.state_dict(), f"model_{epoch}")
+        torch.save(model.state_dict(), f"model_{epoch}.pt")
 ```
 
 Each method receives `params_dict`, which is a dictionary object containing the
@@ -217,6 +217,10 @@ parameters:
     PROG_BAR : str
         Progress bar from tqdm library.
 ```
+
+`NOTE:` the callbacks design can be considered as a port from Keras design. 
+`I AM NOT` the author of this callbacks design despite the fact that I made 
+some minor design changes. Find more in the `Credits` section.
 
 ## Custom fitting process
 The current Trainer design has been created to process a dataloader that
