@@ -114,7 +114,8 @@ class FastTensorDataLoader:
     batch_size : int, optional, default: 32
         The batch size to load.
     shuffle : bool, optional, default: False
-        Whether to shuffle the data (True) or not (False).
+        Whether to shuffle the data (True) or not (False). If False, data will 
+        be processed in sequentially.
 
     References
     ----------

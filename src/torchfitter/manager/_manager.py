@@ -135,6 +135,9 @@ class Manager:
         np.random.seed(seed)
         torch.manual_seed(seed)
 
+        if torch.cuda.is_available():
+            torch.cuda.seed(seed)
+
     def save_initial_states(
         self, model_state: dict, optim_state: dict
     ) -> None:

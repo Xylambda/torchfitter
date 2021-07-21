@@ -5,7 +5,7 @@ import warnings
 import statistics
 
 from tqdm.auto import tqdm
-from torchfitter.conventions import ParamsDict, BAR_FORMAT
+from torchfitter.conventions import ParamsDict, BarFormat
 from torchfitter.callbacks.base import CallbackHandler
 
 
@@ -60,8 +60,7 @@ class Trainer:
         self.callback_handler = CallbackHandler(
             callbacks_list=self.callbacks_list
         )
-        self.__bar_format = BAR_FORMAT
-
+        self.__bar_format = BarFormat.FORMAT
         logging.basicConfig(level=logging.INFO)
 
     def fit(
@@ -87,15 +86,7 @@ class Trainer:
         """
         # define progress bar
         initial_epoch = self.params_dict[ParamsDict.EPOCH_NUMBER]
-        pbar = tqdm(
-            range(initial_epoch, epochs+1),
-            ascii=True,
-            unit=' epoch',
-            bar_format=self.__bar_format,
-            leave=False,
-            disable=False,
-        )
-        self._update_params_dict(**{ParamsDict.PROG_BAR: pbar})
+        n_iter = len(train_loader) + len(val_loader)
 
         # track total training time
         total_start_time = time.time()
@@ -103,46 +94,55 @@ class Trainer:
         self.callback_handler.on_fit_start(self.params_dict)
 
         # ---- train process ----
-        for epoch in pbar:
+        epoch = initial_epoch
+        while epoch <= epochs and not self.params_dict[ParamsDict.STOP_TRAINING]:
+            with tqdm(
+                range(1, n_iter+1),
+                bar_format=self.__bar_format,
+                ascii=True,
+                leave=False,
+                disable=False,
+                unit=' batch'
+            ) as pbar:
+                self._update_params_dict(**{ParamsDict.PROG_BAR: pbar})
+                self.callback_handler.on_epoch_start(self.params_dict)
 
-            self.callback_handler.on_epoch_start(self.params_dict)
+                # track epoch time
+                epoch_start_time = time.time()
 
-            # track epoch time
-            epoch_start_time = time.time()
+                # train
+                self.callback_handler.on_train_step_start(self.params_dict)
+                tr_loss = self.train_step(train_loader)
+                self.callback_handler.on_train_step_end(self.params_dict)
 
-            # train
-            self.callback_handler.on_train_step_start(self.params_dict)
-            tr_loss = self.train_step(train_loader)
-            self.callback_handler.on_train_step_end(self.params_dict)
+                # validation
+                self.callback_handler.on_validation_step_start(self.params_dict)
+                val_loss = self.validation_step(val_loader)
+                self.callback_handler.on_validation_step_end(self.params_dict)
 
-            # validation
-            self.callback_handler.on_validation_step_start(self.params_dict)
-            val_loss = self.validation_step(val_loader)
-            self.callback_handler.on_validation_step_end(self.params_dict)
+                self._update_history(
+                    **{
+                        ParamsDict.HISTORY_TRAIN_LOSS: tr_loss,
+                        ParamsDict.HISTORY_VAL_LOSS: val_loss,
+                        ParamsDict.HISTORY_LR: self.optimizer.param_groups[0]["lr"],
+                    }
+                )
 
-            self._update_history(
-                **{
-                    ParamsDict.HISTORY_TRAIN_LOSS: tr_loss,
-                    ParamsDict.HISTORY_VAL_LOSS: val_loss,
-                    ParamsDict.HISTORY_LR: self.optimizer.param_groups[0]["lr"],
-                }
-            )
+                epoch_time = time.time() - epoch_start_time
+                self._update_params_dict(
+                    **{
+                        ParamsDict.VAL_LOSS: val_loss,
+                        ParamsDict.TRAIN_LOSS: tr_loss,
+                        ParamsDict.EPOCH_TIME: epoch_time,
+                        ParamsDict.EPOCH_NUMBER: epoch,
+                        ParamsDict.TOTAL_EPOCHS: epochs,
+                    }
+                )
 
-            epoch_time = time.time() - epoch_start_time
-            self._update_params_dict(
-                **{
-                    ParamsDict.VAL_LOSS: val_loss,
-                    ParamsDict.TRAIN_LOSS: tr_loss,
-                    ParamsDict.EPOCH_TIME: epoch_time,
-                    ParamsDict.EPOCH_NUMBER: epoch,
-                    ParamsDict.TOTAL_EPOCHS: epochs,
-                }
-            )
-
-            self.callback_handler.on_epoch_end(self.params_dict)
-
-            if self.params_dict[ParamsDict.STOP_TRAINING]:
-                break
+                self.callback_handler.on_epoch_end(self.params_dict)
+                
+                epoch += 1
+                pbar.reset()
 
         total_time = time.time() - total_start_time
 
@@ -274,6 +274,9 @@ class Trainer:
 
             losses.append(loss.item())
 
+            # update progress bar
+            self.params_dict[ParamsDict.PROG_BAR].update(1)
+
         return statistics.mean(losses)
 
     def validation_step(
@@ -302,6 +305,9 @@ class Trainer:
                 loss = self.compute_loss(out, labels.to(self.device))
 
                 losses.append(loss.item())
+
+                # update progress bar
+                self.params_dict[ParamsDict.PROG_BAR].update(1)
 
         return statistics.mean(losses)
 

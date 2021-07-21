@@ -83,8 +83,21 @@ class ManagerParamsDict:
     HISTORY = 'history'
 
 
-# ----- create bar format ------
-r_bar = '| {n_fmt}/{total_fmt} | {rate_noinv_fmt}{postfix}, time_remaining: {remaining} s'
-left = "{l_bar}{bar}"
-bar_fmt = f"{left}{r_bar}"
-BAR_FORMAT = f"{left}{r_bar}"
+class BarFormat:
+    """
+    Conventions for the bar formatting of tqdm progress bar. See references for
+    more info.
+
+    Parameters
+    ----------
+    FORMAT : str
+        Bar format for tqdm progress bar.
+
+    References
+    ----------
+    .. [1] tqdm - https://tqdm.github.io/docs/tqdm/#__init__
+    """
+    r_bar = '| {n_fmt}/{total_fmt} | {rate_noinv_fmt}{postfix}, time_remaining: {remaining} s'
+    left = "{l_bar}{bar}"
+    
+    FORMAT = f"{left}{r_bar}"
