@@ -67,12 +67,14 @@ class Trainer:
         self,
         train_loader: torch.utils.data.dataloader.DataLoader,
         val_loader: torch.utils.data.dataloader.DataLoader,
-        epochs: int
+        epochs: int,
+        disable_pbar: bool=False
     ) -> None:
         """Fit the model.
 
         Fit the model using the given loaders for the given number of epochs. A
-        progress bar will be displayed using tqdm.
+        progress bar will be displayed using tqdm unless 'disable_pbar' is set
+        to True.
 
         Parameters
         ----------
@@ -82,6 +84,8 @@ class Trainer:
             DataLoader containing validation dataset.
         epochs : int
             Number of training epochs.
+        disable_pbar : bool, optional, default: False
+            If True, the progress bar will be disabled.
 
         """
         # define progress bar
@@ -95,15 +99,18 @@ class Trainer:
 
         # ---- train process ----
         epoch = initial_epoch
-        while epoch <= epochs and not self.params_dict[ParamsDict.STOP_TRAINING]:
+        stop = self.params_dict[ParamsDict.STOP_TRAINING]
+        while epoch <= epochs and not stop:
             with tqdm(
                 range(1, n_iter+1),
                 bar_format=self.__bar_format,
                 ascii=True,
                 leave=False,
-                disable=False,
+                disable=disable_pbar,
                 unit=' batch'
             ) as pbar:
+                pbar.set_description(f"Epoch: {epoch}/{epochs}")
+                
                 self._update_params_dict(**{ParamsDict.PROG_BAR: pbar})
                 self.callback_handler.on_epoch_start(self.params_dict)
 

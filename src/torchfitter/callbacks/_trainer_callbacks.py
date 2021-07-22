@@ -1,6 +1,8 @@
 """ Callbacks for the manager class """
 import torch
 import logging
+import subprocess
+from typing import List
 from .base import Callback
 from torchfitter.conventions import ParamsDict
 
@@ -119,14 +121,11 @@ class LoggerCallback(Callback):
 
     def on_epoch_end(self, params_dict):
         # get params
-        epochs = params_dict[ParamsDict.TOTAL_EPOCHS]
-        epoch = params_dict[ParamsDict.EPOCH_NUMBER]
         val_loss = params_dict[ParamsDict.VAL_LOSS]
         train_loss = params_dict[ParamsDict.TRAIN_LOSS]
         epoch_time = params_dict[ParamsDict.EPOCH_TIME]
         pbar = params_dict[ParamsDict.PROG_BAR]
 
-        pbar.set_description(f"Epoch: {epoch}/{epochs}")
         pbar.set_postfix(
             train_loss=train_loss,
             val_loss=val_loss,
@@ -202,20 +201,96 @@ class ReduceLROnPlateau(Callback):
     ----------
     scheduler : torch.optim.Scheduler
         Scheduler.
+    metric : str, optional, default : conventions.ParamsDict.TRAIN_LOSS
+        Metric to track in order to reduce the learning rate.
     """
-    def __init__(self, scheduler):
+    def __init__(self, scheduler, metric=ParamsDict.TRAIN_LOSS):
         super(ReduceLROnPlateau, self).__init__()
 
         self.scheduler = scheduler
+        self.metric = metric
         self.__restart_dict = dict(
             (k, self.scheduler.__dict__[k]) for k in self.scheduler.__dict__.keys() if k != 'optimizer'
         )
         
     def on_train_step_end(self, params_dict):
         # we apply the scheduler over the training loss
-        metric = params_dict[ParamsDict.TRAIN_LOSS]
+        metric = params_dict[self.metric]
         self.scheduler.step(metric)
             
     def reset_parameters(self):
         for key, value in self.__restart_dict.items():
             self.scheduler.__dict__[key] = value
+
+
+class GPUStats(Callback):
+    """
+    Callback that logs GPU stats in order to monitor them. The list of queries 
+    can be customized
+
+    Parameters
+    ----------
+    queries : list of str
+        List of queries to log
+    format : str
+    
+    Notes
+    -----
+    To check the list of available queries, see 
+    https://nvidia.custhelp.com/app/answers/detail/a_id/3751/~/useful-nvidia-smi-queries
+    
+    """
+    def __init__(
+        self,
+        format : str="csv, nounits, noheader",
+        queries: List[str]=[
+            "name",
+            "temperature.gpu",
+            "utilization.gpu",
+            "utilization.memory",
+            "memory.used"
+        ],
+    ):
+        super(GPUStats, self).__init__()
+
+        self.queries = queries    
+        self.format = format
+    
+    def on_epoch_end(self, params_dict):
+        stdout = self._get_queries(queries=self.queries, format=self.format)
+        print(*stdout, sep=' | ')
+        
+    def _get_queries(self, queries, format):
+        stdout = []
+
+        for query in queries:
+            out = subprocess.run(
+                f"nvidia-smi --query-gpu={query} --format={format}", 
+                stdout=subprocess.PIPE, encoding='utf-8'
+            ).stdout.replace('\r', ' ').replace('\n', ' ')
+
+            stdout.append(out)
+            
+        return stdout
+
+
+class LearningRateFinder(Callback):
+    """
+    TODO: I think this should go in utils, since it is not really a callback.
+
+    References
+    ----------
+    .. [1] Sylvain Gugger - How do you find a good learning rate? 
+       https://sgugger.github.io/how-do-you-find-a-good-learning-rate.html
+    
+    .. [2] Leslie N. Smith - Cyclical Learning Rates for Training Neural 
+       Networks
+       https://arxiv.org/pdf/1506.01186.pdf
+
+    .. [3] aychang - Automated Learning Rate Suggester
+       https://forums.fast.ai/t/automated-learning-rate-suggester/44199
+
+    https://gist.github.com/muellerzr/0634c486bd4939049314632ccc3f7a03
+    """
+    def __init__(self):
+        super(LearningRateFinder, self).__init__()
