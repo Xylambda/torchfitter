@@ -1,5 +1,6 @@
 import os
 import torch
+import torchmetrics
 import argparse
 import numpy as np
 import torch.nn as nn
@@ -57,6 +58,11 @@ callbacks = [
     )
 ]
 
+metrics = [
+    torchmetrics.MeanSquaredError().to(DEVICE),
+    torchmetrics.MeanAbsoluteError().to(DEVICE)
+]
+
 # -----------------------------------------------------------------------------
 # wrap data in Dataset
 train_wrapper = DataWrapper(
@@ -84,7 +90,8 @@ trainer = Trainer(
     optimizer=optimizer, 
     regularizer=regularizer,
     device=DEVICE,
-    callbacks=callbacks
+    callbacks=callbacks,
+    metrics=metrics
 )
 
 if __name__ == "__main__":
@@ -106,7 +113,7 @@ if __name__ == "__main__":
         y_pred = model(to_predict).cpu().numpy()
 
     # -------------------------------------------------------------------------
-    # plot predictions
+    # plot predictions, losses and learning rate
     fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(19,4))
 
     ax[0].plot(trainer.params_dict['history']['train_loss'], label='Train loss')
@@ -123,4 +130,18 @@ if __name__ == "__main__":
     ax[2].plot(trainer.params_dict['history']['learning_rate'], label="Learning rate")
     ax[2].set_title('Learning Rate')
     ax[2].legend();
+    plt.show()
+
+    # plot metrics evolution
+    fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(15,5))
+
+    ax[0].plot(trainer.internal_state.history['MeanSquaredError']['train'], label='Train')
+    ax[0].plot(trainer.internal_state.history['MeanSquaredError']['validation'], label='Validation')
+    ax[0].set_title('Mean Squared Error')
+    ax[0].legend();
+
+    ax[1].plot(trainer.internal_state.history['MeanAbsoluteError']['train'], label='Train')
+    ax[1].plot(trainer.internal_state.history['MeanAbsoluteError']['validation'], label='Validation')
+    ax[1].set_title('Mean Absolute Error')
+    ax[1].legend();
     plt.show()

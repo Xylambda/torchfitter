@@ -257,12 +257,20 @@ class MyTrainer(Trainer):
 * **Do you know Pytorch-Lightning?**
 
 I know it and I think **it is awesome**. This is a personal project. I wouln't
-hesitate to use [Pytorch-Lightning](https://www.pytorchlightning.ai/) for 
-more complex tasks, like distributed training on multiple GPUs.
+hesitate to use [Pytorch-Lightning](https://www.pytorchlightning.ai/) for more 
+complex tasks, like distributed training on multiple GPUs.
 
 * **Why is the `validation loader` not optional?**
 
 Because I think it enforces good ML practices that way.
+
+* **Why didn't you implement the optimization steps in the model object?**
+
+It is certainly another approach you may take when building an optimization 
+loop (PyTorch-Lightning works this way), but I don't like my abstract data 
+types to track way too many things in addition to being torch.nn.Module types. 
+Functionality should be **clear and atomic**: the model tracks gradients and 
+the trainer cares about the optimization process.
 
 * **I have a suggestion/question**
 
@@ -272,3 +280,7 @@ Thank you! Do not hesitate to open an issue and I'll do my best to answer you.
 * <div>Icons made by <a href="https://www.flaticon.com/authors/vignesh-oviyan" title="Vignesh Oviyan">Vignesh Oviyan</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></div>
 
 * [Keras API](https://keras.io/api/).
+
+* [torchmetrics](https://torchmetrics.readthedocs.io/en/latest/)
+
+* [fastai](https://docs.fast.ai/)

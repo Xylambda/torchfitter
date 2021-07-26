@@ -20,7 +20,7 @@ class EarlyStopping(Callback):
         number of epochs without improvemente, the training stops.
     load_best : bool, optional, deafult: True
         Whether to load the best observed parameters (True) or not (False).
-    path : str or Path, optional, default: 'checkpoint'
+    path : str or Path, optional, default: 'checkpoint.pt'
         Path to store the best observed parameters.
     """
 
@@ -196,7 +196,11 @@ class LearningRateScheduler(Callback):
 
 
 class ReduceLROnPlateau(Callback):
-    """
+    """Reduce learning rate when a metric has stopped improving.
+
+    You can select the metric to watch from the metrics available in the 
+    TrainerInternalState class.
+
     Parameters
     ----------
     scheduler : torch.optim.Scheduler
@@ -212,6 +216,10 @@ class ReduceLROnPlateau(Callback):
         self.__restart_dict = dict(
             (k, self.scheduler.__dict__[k]) for k in self.scheduler.__dict__.keys() if k != 'optimizer'
         )
+
+    def __repr__(self) -> str:
+        sch = type(self.scheduler).__name__
+        return f"ReduceLROnPlateau(scheduler={sch}, metric={self.metric})"
         
     def on_train_step_end(self, params_dict):
         # we apply the scheduler over the training loss
@@ -272,6 +280,9 @@ class GPUStats(Callback):
             stdout.append(out)
             
         return stdout
+
+    def reset_parameters(self):
+        pass # no parameters to reset
 
 
 class LearningRateFinder(Callback):

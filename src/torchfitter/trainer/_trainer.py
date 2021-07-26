@@ -3,16 +3,23 @@ import torch
 import logging
 import warnings
 import statistics
+import torchmetrics
 
 from tqdm.auto import tqdm
-from torchfitter.conventions import ParamsDict, BarFormat
+from typing import List
 from torchfitter.callbacks.base import CallbackHandler
+from torchfitter.conventions import ParamsDict, BarFormat
+from torchfitter.trainer._utils import TrainerInternalState, MetricsHandler
 
 
 class Trainer:
-    """Trainer
-
-    Class that eases the training of a PyTorch model.
+    """Class that eases the training of a PyTorch model.
+    
+    The trainer tracks its state using a 
+    'torchfitter.trainer.TrainerInternalState' object. You can also pass a list
+    of callbacks and/or metrics to the trainer. The callbacks will be runned
+    at different points depending on the methods that were filled. The metrics
+    will be runned in the train and validation steps.
 
     Parameters
     ----------
@@ -29,14 +36,23 @@ class Trainer:
         select the device.
     callbacks : list of torchfitter.callback.Callback
         Callbacks that allow interaction.
+    metrics : list of torchmetrics.Metric, optional, default: None
+        List of metrics to compute in the fitting process.
 
     Attributes
     ----------
     callback_handler : torchfitter.callback.CallbackHandler
         Handles the passed callbacks.
-    params_dict : dict
-        Contains training params.
+    internal_state : torchfitter.trainer.TrainerInternalState
+        Trainer internal parameters state.
+    metrics_handler : torchfitter.trainer.MetricsHandler
+        Handles the passed metrics.
 
+    Warning
+    -------
+    The trainer class will automatically select the device if is None, which 
+    will may cause problems when tensors and/or modules are on different 
+    devices.
     """
 
     def __init__(
@@ -47,6 +63,7 @@ class Trainer:
         regularizer=None,
         device=None,
         callbacks: list=None,
+        metrics: List[torchmetrics.Metric]=None
     ):
         self.criterion = criterion
         self.optimizer = optimizer
@@ -54,14 +71,24 @@ class Trainer:
         self.device = self._get_device(device)
         self.model = model.to(self.device)
         self.callbacks_list = callbacks
+        self.metrics_list = metrics
 
         # attributes
-        self.params_dict = self._initialize_params_dict()
+        self.internal_state = TrainerInternalState(
+            model=self.model, device=self.device
+        )
         self.callback_handler = CallbackHandler(
             callbacks_list=self.callbacks_list
         )
+        self.metrics_handler = MetricsHandler(metrics_list=self.metrics_list)
         self.__bar_format = BarFormat.FORMAT
+
+        # --------- 
         logging.basicConfig(level=logging.INFO)
+
+        if self.metrics_handler.metric_names is not None:
+            names = self.metrics_handler.metric_names
+            self.internal_state.add_metrics(*names)
 
     def fit(
         self,
@@ -88,18 +115,19 @@ class Trainer:
             If True, the progress bar will be disabled.
 
         """
-        # define progress bar
-        initial_epoch = self.params_dict[ParamsDict.EPOCH_NUMBER]
+        initial_epoch = self.internal_state.get_single_param(
+            key=ParamsDict.EPOCH_NUMBER
+        )
         n_iter = len(train_loader) + len(val_loader)
 
         # track total training time
         total_start_time = time.time()
 
-        self.callback_handler.on_fit_start(self.params_dict)
+        self.callback_handler.on_fit_start(self.internal_state.get_state_dict())
 
-        # ---- train process ----
+        # ---- fitting process ----
         epoch = initial_epoch
-        stop = self.params_dict[ParamsDict.STOP_TRAINING]
+        stop = self.internal_state.get_single_param(key=ParamsDict.STOP_TRAINING)
         while epoch <= epochs and not stop:
             with tqdm(
                 range(1, n_iter+1),
@@ -111,23 +139,23 @@ class Trainer:
             ) as pbar:
                 pbar.set_description(f"Epoch: {epoch}/{epochs}")
                 
-                self._update_params_dict(**{ParamsDict.PROG_BAR: pbar})
-                self.callback_handler.on_epoch_start(self.params_dict)
+                self.internal_state.update_params(**{ParamsDict.PROG_BAR: pbar})
+                self.callback_handler.on_epoch_start(self.internal_state.get_state_dict())
 
                 # track epoch time
                 epoch_start_time = time.time()
 
                 # train
-                self.callback_handler.on_train_step_start(self.params_dict)
+                self.callback_handler.on_train_step_start(self.internal_state.get_state_dict())
                 tr_loss = self.train_step(train_loader)
-                self.callback_handler.on_train_step_end(self.params_dict)
+                self.callback_handler.on_train_step_end(self.internal_state.get_state_dict())
 
                 # validation
-                self.callback_handler.on_validation_step_start(self.params_dict)
+                self.callback_handler.on_validation_step_start(self.internal_state.get_state_dict())
                 val_loss = self.validation_step(val_loader)
-                self.callback_handler.on_validation_step_end(self.params_dict)
+                self.callback_handler.on_validation_step_end(self.internal_state.get_state_dict())
 
-                self._update_history(
+                self.internal_state.update_history(
                     **{
                         ParamsDict.HISTORY_TRAIN_LOSS: tr_loss,
                         ParamsDict.HISTORY_VAL_LOSS: val_loss,
@@ -136,7 +164,7 @@ class Trainer:
                 )
 
                 epoch_time = time.time() - epoch_start_time
-                self._update_params_dict(
+                self.internal_state.update_params(
                     **{
                         ParamsDict.VAL_LOSS: val_loss,
                         ParamsDict.TRAIN_LOSS: tr_loss,
@@ -146,60 +174,16 @@ class Trainer:
                     }
                 )
 
-                self.callback_handler.on_epoch_end(self.params_dict)
+                self.callback_handler.on_epoch_end(self.internal_state.__dict__)
                 
                 epoch += 1
-                pbar.reset()
+                stop = self.internal_state.get_single_param(key=ParamsDict.STOP_TRAINING)
+                pbar.reset() # DISC: pbar.close() ??
 
         total_time = time.time() - total_start_time
 
-        self._update_params_dict(**{ParamsDict.TOTAL_TIME: total_time})
-        self.callback_handler.on_fit_end(self.params_dict)
-
-    def _update_params_dict(self, **kwargs):
-        """
-        Update paramaters dictionary with the passed key-value pairs.
-
-        Parameters
-        ----------
-        kwargs : dict
-            Dictionary with keys to update.
-        """
-        for key, value in kwargs.items():
-            self.params_dict[key] = value
-
-    def _update_history(self, **kwargs):
-        """
-        Update history paramaters dictionary with the passed key-value pairs.
-
-        Parameters
-        ----------
-        kwargs : dict
-            Dictionary with keys to update.
-        """
-        for key, value in kwargs.items():
-            self.params_dict[ParamsDict.HISTORY][key].append(value)
-
-    def _initialize_params_dict(self):
-        params_dict = {
-            ParamsDict.TRAIN_LOSS: float('inf'),
-            ParamsDict.VAL_LOSS: float('inf'),
-            ParamsDict.EPOCH_TIME: 0,
-            ParamsDict.EPOCH_NUMBER: 1,
-            ParamsDict.TOTAL_EPOCHS: None,
-            ParamsDict.TOTAL_TIME: 0,
-            ParamsDict.STOP_TRAINING: False,
-            ParamsDict.DEVICE: self.device,
-            ParamsDict.MODEL: self.model,
-            ParamsDict.PROG_BAR: None,
-            ParamsDict.HISTORY: {
-                ParamsDict.HISTORY_TRAIN_LOSS: [],
-                ParamsDict.HISTORY_VAL_LOSS: [],
-                ParamsDict.HISTORY_LR: [],
-            },
-        }
-
-        return params_dict
+        self.internal_state.update_params(**{ParamsDict.TOTAL_TIME: total_time})
+        self.callback_handler.on_fit_end(self.internal_state.__dict__)
 
     def set_bar_format(self, fmt: str) -> None:
         """
@@ -252,9 +236,10 @@ class Trainer:
     def train_step(
         self, loader: torch.utils.data.dataloader.DataLoader
     ) -> float:
-        """Train step.
+        """Perform a train step using the given dataloader.
 
-        Perform a train step using the given dataloader.
+        A train step consists of running and optimizing the model for each 
+        batch in the given train dataloader.
 
         Parameters
         ----------
@@ -270,9 +255,19 @@ class Trainer:
 
         losses = []  # loss as mean of batch losses
         for features, labels in loader:
+            
+            # will be used multiple times
+            labels = labels.to(self.device)
+            features = features.to(self.device)
+
             # forward pass and loss
-            out = self.model(features.to(self.device))
-            loss = self.compute_loss(out, labels.to(self.device))
+            out = self.model(features)
+            loss = self.compute_loss(out, labels)
+
+            # compute metrics
+            _ = self.metrics_handler.single_batch_computation(
+                predictions=out, target=labels
+            )
             
             # clean gradients, backpropagation and parameters update
             self.optimizer.zero_grad()
@@ -280,18 +275,26 @@ class Trainer:
             self.optimizer.step()
 
             losses.append(loss.item())
+            self.internal_state.update_progress_bar(n=1)
 
-            # update progress bar
-            self.params_dict[ParamsDict.PROG_BAR].update(1)
+        # compute accumulated metrics (metric.compute())
+        metrics_accumulated = self.metrics_handler.accumulated_batch_computation()
+        
+        if metrics_accumulated is not None:
+            self.internal_state.update_metrics(is_train=True, **metrics_accumulated)
+
+        # reset metrics
+        self.metrics_handler.reset_metrics()
 
         return statistics.mean(losses)
 
     def validation_step(
         self, loader: torch.utils.data.dataloader.DataLoader
     ) -> float:
-        """Validation step.
+        """Perform a validation step using the given dataloader.
 
-        Perform a validation step using the given dataloader.
+        A validation step consists of running and optimizing the model for each 
+        batch in the given validation dataloader.
 
         Parameters
         ----------
@@ -308,13 +311,29 @@ class Trainer:
         losses = []  # loss as mean of batch losses
         with torch.no_grad():
             for features, labels in loader:
-                out = self.model(features.to(self.device))
-                loss = self.compute_loss(out, labels.to(self.device))
+                # will be used multiple times
+                labels = labels.to(self.device)
+                features = features.to(self.device)
+
+                out = self.model(features)
+                loss = self.compute_loss(out, labels)
+
+                # compute metrics
+                _ = self.metrics_handler.single_batch_computation(
+                    predictions=out, target=labels
+                )
 
                 losses.append(loss.item())
+                self.internal_state.update_progress_bar(n=1)
 
-                # update progress bar
-                self.params_dict[ParamsDict.PROG_BAR].update(1)
+            # compute accumulated metrics
+            metrics_accumulated = self.metrics_handler.accumulated_batch_computation()
+            
+            if metrics_accumulated is not None:
+                self.internal_state.update_metrics(is_train=False, **metrics_accumulated)
+
+            # reset metrics
+            self.metrics_handler.reset_metrics()
 
         return statistics.mean(losses)
 
@@ -336,7 +355,7 @@ class Trainer:
         Returns
         -------
         loss : torch.Tensor
-            Loss graph as (1x1) torch.Tensor.
+            Loss graph contained in a (1 x 1) torch.Tensor.
         """
         try:
             loss = self.criterion(real, target)
