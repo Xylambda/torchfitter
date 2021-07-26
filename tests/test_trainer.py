@@ -115,10 +115,10 @@ def test_trainer(train_config):
     )
 
     obtained_train_loss = np.array(
-        trainer.params_dict[ParamsDict.HISTORY][ParamsDict.HISTORY_TRAIN_LOSS]
+        trainer.internal_state.get_state_dict()[ParamsDict.HISTORY][ParamsDict.HISTORY_TRAIN_LOSS]
     )
     obtained_val_loss = np.array(
-        trainer.params_dict[ParamsDict.HISTORY][ParamsDict.HISTORY_VAL_LOSS]
+        trainer.internal_state.get_state_dict()[ParamsDict.HISTORY][ParamsDict.HISTORY_VAL_LOSS]
     )
 
     np.testing.assert_almost_equal(obtained_train_loss, expected_train_loss)

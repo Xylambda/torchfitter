@@ -89,7 +89,7 @@ def test_earlystopping(train_config):
         callbacks=[early_stopping]
     )
 
-    params_dict = trainer.params_dict
+    params_dict = trainer.internal_state.get_state_dict()
     early_stopping.on_fit_start(params_dict)
 
     for i in range(0, 20):
@@ -138,7 +138,7 @@ def test_logger_callback(caplog, train_config):
     msg = "Logger not stating where the training is running."
     assert caplog.records[0].message.startswith("Starting training process"), msg
 
-    __import__("pdb").set_trace()
+    #__import__("pdb").set_trace()
 
     log_msg = "Epoch: 1/10       | Train loss: 8444.365002   | Validation loss: 8672.904031   | Time/epoch:"
     msg = "Logger not logging first epoch correctly"
@@ -204,7 +204,7 @@ def test_learning_rate_scheduler(train_config):
         0.0045000000000000005
     ]
 
-    obtained_lr = trainer.params_dict['history']['learning_rate']
+    obtained_lr = trainer.internal_state.get_state_dict()['history']['learning_rate']
 
     msg = "Error en LR values"
     expected_lr == obtained_lr, msg
