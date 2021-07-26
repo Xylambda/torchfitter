@@ -16,8 +16,12 @@ from torchfitter.callbacks.base import CallbackHandler
 from torchfitter.callbacks import (
     EarlyStopping, 
     LoggerCallback,
-    LearningRateScheduler
+    LearningRateScheduler,
+    ReduceLROnPlateau,
+    GPUStats
 )
+
+from torchfitter.callbacks.base import CallbackHandler, Callback
 
 torch.manual_seed(0)
 np.random.seed(0)
@@ -208,3 +212,53 @@ def test_learning_rate_scheduler(train_config):
 
     msg = "Error en LR values"
     expected_lr == obtained_lr, msg
+
+
+@pytest.mark.xfail
+def test_reduce_lr_on_plateau():
+    pass
+
+
+@pytest.mark.xfail
+def test_gpu_stats():
+    pass
+
+
+@pytest.mark.fail
+def test_callback_handler():
+    import inspect
+
+    class CallbackTester(Callback):
+        def __init__(self) -> None:
+            self.callback_type = '<Trainer class>'
+
+        def on_train_step_start(self, params_dict: dict) -> str:
+            return "on_train_step_start"
+
+        def on_train_step_end(self, params_dict: dict) -> str:
+            return "on_train_step_end"
+
+        def on_validation_step_start(self, params_dict: dict) -> str:
+            return "on_validation_step_start"
+
+        def on_validation_step_end(self, params_dict: dict) -> str:
+            return "on_validation_step_end"
+
+        def on_epoch_start(self, params_dict: dict) -> str:
+            return "on_epoch_start"
+
+        def on_epoch_end(self, params_dict: dict) -> str:
+            return "on_epoch_end"
+
+        def on_fit_start(self, params_dict: dict) -> str:
+            return "on_fit_start"
+
+        def on_fit_end(self, params_dict: dict) -> str:
+            return "on_fit_end"
+
+
+    # -------------------------------------------------------------------------
+    callback = CallbackTester()
+    handler = CallbackHandler([callback])
+
+    _dict = {'a': 'b'}

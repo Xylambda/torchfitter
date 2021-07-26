@@ -215,10 +215,9 @@ class Trainer:
         reset_model : bool, optional, default: False
             True to reset the model state.
         """
-        restart_dict = self._initialize_params_dict()
-        
-        if reset_model:
-            restart_dict[ParamsDict.MODEL].reset_parameters()
+        restart_dict = self.internal_state.reset_parameters(
+            reset_model=reset_model
+        )
 
         if reset_callbacks:
             if self.callbacks_list is None:
@@ -356,6 +355,10 @@ class Trainer:
         -------
         loss : torch.Tensor
             Loss graph contained in a (1 x 1) torch.Tensor.
+
+        Warning
+        -------
+        This method will cast the target tensor to 'long' data type if needed.
         """
         try:
             loss = self.criterion(real, target)

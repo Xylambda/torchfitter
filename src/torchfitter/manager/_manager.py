@@ -112,7 +112,7 @@ class Manager:
                 **{
                     ManagerParamsDict.MODEL_STATE: self.trainer.model.state_dict(),
                     ManagerParamsDict.OPTIMIZER_STATE: self.trainer.optimizer.state_dict(),
-                    ManagerParamsDict.HISTORY: self.trainer.params_dict[ParamsDict.HISTORY]
+                    ManagerParamsDict.HISTORY: self.trainer.internal_state.get_state_dict()[ParamsDict.HISTORY]
                 }
             )
             self.callback_handler.on_seed_experiment_end(self.params_dict)

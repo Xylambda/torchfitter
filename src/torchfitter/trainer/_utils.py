@@ -1,5 +1,6 @@
 """ Utilities for the training process. """
 import torch
+from torch._C import device
 import torchmetrics
 from typing import Iterable, Dict, List, Type
 from torchfitter.conventions import ParamsDict
@@ -48,6 +49,11 @@ class TrainerInternalState:
         Progress bar from tqdm library.
     """
     def __init__(self, model, device) -> None:
+        self.model = model
+        self.device = device
+        self.___initialize_dict(model=model, device=device)
+    
+    def ___initialize_dict(self, model, device):
         self.training_loss = float('inf')
         self.validation_loss = float('inf')
         self.epoch_time = 0
@@ -217,6 +223,12 @@ class TrainerInternalState:
                     self.__dict__[ParamsDict.HISTORY][key]['train'].append(value)
                 else:
                     self.__dict__[ParamsDict.HISTORY][key]['validation'].append(value)
+    
+    def reset_parameters(self, reset_model=True):
+        if reset_model:
+            self.model.reset_parameters()
+
+        self.___initialize_dict(model=self.model, device=self.device)
 
 
 class MetricsHandler:
