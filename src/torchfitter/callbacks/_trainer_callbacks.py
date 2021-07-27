@@ -85,35 +85,16 @@ class EarlyStopping(Callback):
             self.__dict__[key] = value
 
 
-class LoggerCallback(Callback):
+class ProgressBarLogger(Callback):
     """
-    `LoggerCallback` is used to log some of the parameters dict in order to
-    monitor the fitting process. The logged parameters are:
-        - Current epoch.
-        - Number of epochs.
-        - Train loss.
-        - Validation loss.
-        - Time / epoch.
-
-    It also outputs the total training time once the fitting process ends.
-
-    Parameters
-    ----------
-    update_step : int, optional, default: 50
-        Logs will be performed every 'update_step'.
-
-    Attributes
-    ----------
-    header : list
-        List of column names for the header.
+    Class to using the tqdm bar.
     """
 
-    def __init__(self, update_step=50):
-        super(LoggerCallback, self).__init__()
-        self.update_step = update_step
+    def __init__(self):
+        super(ProgressBarLogger, self).__init__()
 
     def __repr__(self) -> str:
-        return f"LoggerCallback(update_step={self.update_step})"
+        return f"ProgressBarLogger()"
 
     def on_fit_start(self, params_dict):
         dev = params_dict[ParamsDict.DEVICE]
@@ -142,6 +123,57 @@ class LoggerCallback(Callback):
 
     def reset_parameters(self):
         pass # no need to restart any parameter
+
+
+class LoggerCallback(Callback):
+    """
+    `LoggerCallback` is used to log some of the parameters dict in order to
+    monitor the fitting process. The logged parameters are:
+        - Current epoch.
+        - Number of epochs.
+        - Train loss.
+        - Validation loss.
+        - Time / epoch.
+
+    It also outputs the total training time once the fitting process ends.
+
+    Parameters
+    ----------
+    update_step : int, optional, default: 50
+        Logs will be performed every 'update_step'.
+    """
+    def __init__(self, update_step):
+        super(LoggerCallback, self).__init__()
+        self.update_step = update_step
+
+    def on_fit_start(self, params_dict):
+        dev = params_dict[ParamsDict.DEVICE]
+        logging.info(f"Starting training process on {dev}")
+    
+    def on_epoch_end(self, params_dict) -> None:
+        epoch_number = params_dict[ParamsDict.EPOCH_NUMBER]
+        total_epochs = params_dict[ParamsDict.TOTAL_EPOCHS]
+        val_loss = params_dict[ParamsDict.VAL_LOSS]
+        train_loss = params_dict[ParamsDict.TRAIN_LOSS]
+        epoch_time = params_dict[ParamsDict.EPOCH_TIME]
+        
+        msg = (
+            f"Epoch {epoch_number}/{total_epochs} | Train loss: {train_loss:.5f} | Validation loss {val_loss:.5f} | "
+            f"Time/epoch: {epoch_time:.2f} s"
+        )
+        
+        if epoch_number % self.update_step == 0 or epoch_number == 1:
+            logging.info(msg)
+
+    def on_fit_end(self, params_dict):
+        total_time = params_dict[ParamsDict.TOTAL_TIME]
+        # final message
+        logging.info(
+            f"""End of training. Total time: {total_time:0.5f} seconds"""
+        )
+
+    def reset_parameters(self) -> None:
+        pass
 
 
 class LearningRateScheduler(Callback):
@@ -266,7 +298,7 @@ class GPUStats(Callback):
     
     def on_epoch_end(self, params_dict):
         stdout = self._get_queries(queries=self.queries, format=self.format)
-        print(*stdout, sep=' | ')
+        logging.info(*stdout, sep=' | ')
         
     def _get_queries(self, queries, format):
         stdout = []

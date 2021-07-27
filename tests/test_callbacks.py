@@ -142,14 +142,17 @@ def test_logger_callback(caplog, train_config):
     msg = "Logger not stating where the training is running."
     assert caplog.records[0].message.startswith("Starting training process"), msg
 
-    #__import__("pdb").set_trace()
-
-    log_msg = "Epoch: 1/10       | Train loss: 8444.365002   | Validation loss: 8672.904031   | Time/epoch:"
+    log_msg = "Epoch 1/10 | Train loss: 8444.36500 | Validation loss 8672.90403 | Time/epoch:"
     msg = "Logger not logging first epoch correctly"
     assert caplog.records[1].message.startswith(log_msg), msg
 
     msg = "Logger not logging end of training time"
     assert caplog.records[2].message.startswith("End of training. Total time: "), msg
+
+
+@pytest.mark.xfail
+def test_progress_bar_logger():
+    pass
 
 
 def test_learning_rate_scheduler(train_config):
