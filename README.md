@@ -77,7 +77,7 @@ regularizer = L1Regularization(regularization_rate=0.01, biases=False)
 
 # callbacks
 logger = LoggerCallback(update_step=50)
-early_stopping = EarlyStopping(patience=50, load_best=True)
+early_stopping = EarlyStopping(patience=50, load_best=True, path='checkpoint.pt')
 scheduler = LearningRateScheduler(
     scheduler=optim.lr_scheduler.StepLR(optimizer, step_size=500, gamma=0.9)
 )
@@ -128,10 +128,30 @@ class L1Regularization(RegularizerBase):
 Notice how the `penalty_term` is moved to the given `device`. This is necessary
 in order to avoid operations with tensors stored in different devices.
 
+If you override the `compute_loss` method, you must implement the 
+regularization in order to be able to use this feature:
+
+```python
+from torchfitter.trainer import Trainer
+
+
+class MyTrainer(Trainer):
+    ...
+    def compute_loss(self, real, target):
+        ...
+        # apply regularization if any
+        if self.regularizer is not None:
+            penalty = self.regularizer(
+                self.model.named_parameters(), self.device
+            )
+            loss += penalty.item()
+        ...
+```
+
 ## Callbacks
 Callbacks allow you to interact with the model during the fitting process. They
-provide with different methods at different stages. To create a callback simply 
-extend the base class and fill the desired methods.
+provide with different methods that are called at different stages. To create a 
+callback simply extend the base class and fill the desired methods.
 
 ```python
 import torch

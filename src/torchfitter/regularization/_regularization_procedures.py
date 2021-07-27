@@ -83,5 +83,3 @@ class L2Regularization(RegularizerBase):
                 penalty_term = penalty_term + param.norm(p=2)
 
         return self.rate * penalty_term
-
-# https://elvex.ugr.es/decsai/deep-learning/slides/NN5%20Regularization.pdf
