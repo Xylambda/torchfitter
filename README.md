@@ -7,13 +7,17 @@
 ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/Xylambda/torchfitter?style=for-the-badge)
 ![GitHub issues](https://img.shields.io/github/issues/Xylambda/torchfitter?style=for-the-badge)
 
-`TorchFitter` is a simple library I created to ease the training of PyTorch
+`torchfitter` is a simple library I created to ease the training of PyTorch
 models. It features a class called `Trainer` that includes the basic 
 functionality to fit models in a Keras-like style.
 
 The library also provides a callbacks API that can be used to interact with
 the model during the training process, as well as a set of basic regularization
 procedures.
+
+Additionally, you will find the `Manager` class which allows you to run 
+multiple experiments for different random seeds. The class is still in testing
+stage, so unexpected behaviour may occur when using it.
 
 ## Installation
 **Normal user**
@@ -73,7 +77,7 @@ regularizer = L1Regularization(regularization_rate=0.01, biases=False)
 
 # callbacks
 logger = LoggerCallback(update_step=50)
-early_stopping = EarlyStopping(patience=50, load_best=True)
+early_stopping = EarlyStopping(patience=50, load_best=True, path='checkpoint.pt')
 scheduler = LearningRateScheduler(
     scheduler=optim.lr_scheduler.StepLR(optimizer, step_size=500, gamma=0.9)
 )
@@ -108,9 +112,9 @@ class L1Regularization(RegularizerBase):
     def __init__(self, regularization_rate, biases=False):
         super(L1Regularization, self).__init__(regularization_rate, biases)
 
-    def compute_penalty(self, named_parameters):
+    def compute_penalty(self, named_parameters, device):
         # Initialize with tensor, cannot be scalar
-        penalty_term = torch.zeros(1, 1, requires_grad=True)
+        penalty_term = torch.zeros(1, 1, requires_grad=True).to(device)
 
         for name, param in named_parameters:
             if not self.biases and name.endswith("bias"):
@@ -121,10 +125,33 @@ class L1Regularization(RegularizerBase):
         return self.rate * penalty_term
 ```
 
+Notice how the `penalty_term` is moved to the given `device`. This is necessary
+in order to avoid operations with tensors stored in different devices.
+
+If you override the `compute_loss` method, you must implement the 
+regularization in order to be able to use this feature:
+
+```python
+from torchfitter.trainer import Trainer
+
+
+class MyTrainer(Trainer):
+    ...
+    def compute_loss(self, real, target):
+        ...
+        # apply regularization if any
+        if self.regularizer is not None:
+            penalty = self.regularizer(
+                self.model.named_parameters(), self.device
+            )
+            loss += penalty.item()
+        ...
+```
+
 ## Callbacks
 Callbacks allow you to interact with the model during the fitting process. They
-provide with different methods at different stages. To create a callback simply 
-extend the base class and fill the desired methods.
+provide with different methods that are called at different stages. To create a 
+callback simply extend the base class and fill the desired methods.
 
 ```python
 import torch
@@ -136,32 +163,84 @@ class ModelSaver(Callback):
     def __init__(self):
         super(ModelSaver, self).__init__()
 
+    def __repr__(self) -> str:
+        return "ModelSaver()"
+
     def on_epoch_end(self, params_dict):
         epoch = params_dict[ParamsDict.EPOCH_NUMBER]
         model = params_dict[ParamsDict.MODEL]
-        torch.save(model.state_dict(), f"model_{epoch}")
+        torch.save(model.state_dict(), f"model_{epoch}.pt")
 ```
 
 Each method receives `params_dict`, which is a dictionary object containing the
-following params:
-* **training_loss** the current training loss.
-* **validation_loss** the current validation loss.
-* **epoch_time** the time it took to compute the current epoch.
-* **epoch_number** the corresponding number of the current epoch.
-* **total_epochs** the total number of epochs.
-* **total_time** the total time it took to complete all epochs.
-* **stop_training** whether to stop the training process (True) or not (False).
-* **device** device where the model and data are stored.
-* **model** the model to train.
-* **history** dictionary containing:
-    * **train_loss** train loss for each epoch up to the current epoch.
-    * **validation_loss** validation loss for each epoch up to the current epoch.
-    * **learning_rate** learning rate for each epoch up to the current epoch.
+internal training parameters. You can see the pair key value of each parameter
+of the conventions:
 
-Each epoch, all dynamic params are updated according to the training process. 
-You can pretty much do anything you want with those params during the training 
-process.
+```python
+>>> from torchfitter.conventions import ParamsDict
+>>> [(x, getattr(ParamsDict, x)) for x in ParamsDict.__dict__ if not x.startswith('__')]
+[('TRAIN_LOSS', 'training_loss'),
+ ('VAL_LOSS', 'validation_loss'),
+ ('EPOCH_TIME', 'epoch_time'),
+ ('EPOCH_NUMBER', 'epoch_number'),
+ ('TOTAL_EPOCHS', 'total_epochs'),
+ ('TOTAL_TIME', 'total_time'),
+ ('STOP_TRAINING', 'stop_training'),
+ ('DEVICE', 'device'),
+ ('MODEL', 'model'),
+ ('HISTORY', 'history'),
+ ('HISTORY_TRAIN_LOSS', 'train_loss'),
+ ('HISTORY_VAL_LOSS', 'validation_loss'),
+ ('HISTORY_LR', 'learning_rate'),
+ ('PROG_BAR', 'progress_bar')]
+```
 
+And you can also check the doc to understand the meaning of each one of the 
+parameters:
+```python
+>>> from torchfitter.conventions import ParamsDict
+>>> print(ParamsDict.__doc__)
+
+    Naming conventions for torchfitter.trainer.Trainer internal parameters.
+
+    Attributes
+    ----------
+    TRAIN_LOSS : str
+        The current training loss.
+    VAL_LOSS : str
+        The current validation loss.
+    EPOCH_TIME : str
+        The time it took to compute the current epoch.
+    EPOCH_NUMBER : str
+        The corresponding number of the current epoch.
+    TOTAL_EPOCHS : str
+        The total number of epochs.
+    TOTAL_TIME : str
+        The total time it took to complete all epochs.
+    STOP_TRAINING : str
+        The total time it took to complete all epochs.
+    DEVICE : str
+        Device where the model and data are stored.
+    MODEL : str
+        The model to train.
+    HISTORY : str
+        Dictionary containing the metrics:
+        * ParamsDict.HISTORY_TRAIN_LOSS
+        * ParamsDict.HISTORY_VAL_LOSS
+        * ParamsDict.HISTORY_LR
+    HISTORY_TRAIN_LOSS : str
+        Train loss for each epoch up to the current epoch.
+    HISTORY_VAL_LOSS : str
+        Validation loss for each epoch up to the current epoch.
+    HISTORY_LR : str
+        Learning rate for each epoch up to the current epoch.
+    PROG_BAR : str
+        Progress bar from tqdm library.
+```
+
+`NOTE:` the callbacks design can be considered as a port from Keras design. 
+`I AM NOT` the author of this callbacks design despite the fact that I made 
+some minor design changes. Find more in the `Credits` section.
 
 ## Custom fitting process
 The current Trainer design has been created to process a dataloader that
@@ -169,6 +248,9 @@ returns 2 tensors: features and labels. Extending the Trainer class and
 rewriting the methods `train_step` and `validation_step` should allow you to 
 create your own custom steps as long as they receive a dataloader and they 
 return the loss value as a number.
+
+Additionally, the loss computation can also be customized; just remember to
+handle the regularization if any.
 
 ```python
 from torchfitter.trainer import Trainer
@@ -185,18 +267,30 @@ class MyTrainer(Trainer):
     def validation_step(self, loader):
         # ...
         return loss # must be a number
+
+    def compute_loss(self, real, target):
+        # ...
+        return loss # loss graph
 ```
 
 ## FAQ
 * **Do you know Pytorch-Lightning?**
 
 I know it and I think **it is awesome**. This is a personal project. I wouln't
-hesitate to use [Pytorch-Lightning](https://www.pytorchlightning.ai/) for 
-more complex tasks, like distributed training on multiple GPUs.
+hesitate to use [Pytorch-Lightning](https://www.pytorchlightning.ai/) for more 
+complex tasks, like distributed training on multiple GPUs.
 
 * **Why is the `validation loader` not optional?**
 
 Because I think it enforces good ML practices that way.
+
+* **Why didn't you implement the optimization steps in the model object?**
+
+It is certainly another approach you may take when building an optimization 
+loop (PyTorch-Lightning works this way), but I don't like my abstract data 
+types to track way too many things in addition to being torch.nn.Module types. 
+Functionality should be **clear and atomic**: the model tracks gradients and 
+the trainer cares about the optimization process.
 
 * **I have a suggestion/question**
 
@@ -206,3 +300,7 @@ Thank you! Do not hesitate to open an issue and I'll do my best to answer you.
 * <div>Icons made by <a href="https://www.flaticon.com/authors/vignesh-oviyan" title="Vignesh Oviyan">Vignesh Oviyan</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></div>
 
 * [Keras API](https://keras.io/api/).
+
+* [torchmetrics](https://torchmetrics.readthedocs.io/en/latest/)
+
+* [fastai](https://docs.fast.ai/)

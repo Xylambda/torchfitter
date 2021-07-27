@@ -20,3 +20,58 @@ def change_model_params(model, weights, biases):
     with torch.no_grad():
         model.weight = nn.Parameter(weights)
         model.bias = nn.Parameter(biases)
+
+
+def compute_forward_gradient(module, *tensors):
+    """Computes forward gradient.
+    
+    This function helps to test the gradient computation of a nn.Module class.
+
+    It computes the gradients for the given variables. The result of a forward
+    must be a torch.Tensor with the shape (1,1), otherwise is not possible to
+    compute the gradients.
+    
+    Parameters
+    ----------
+    module : torch.nn.Module
+        The module function with a defined forward.
+    *tensors : tuple
+        The input tensors to compute the gradients of.
+        
+    Returns
+    -------
+    gradients : dict
+        A dictionary whose keys are a list of sorted integers and whose values
+        are the gradients for each passed tensor (in the same order they were 
+        passed).
+    
+    Note
+    ----
+    This function returns the gradients for the leaf variables, not the 
+    intermediate gradients.
+
+    """
+    # minimal check
+    for t in tensors:
+        if not t.requires_grad:
+            raise ValueError("Tensors must have 'requires_grad' activated.")
+    
+    # create computational graph
+    forward = module(*tensors)
+    
+    # compute gradients
+    if forward.shape != torch.Size([1]):
+        raise ValueError(
+            "The passed tensors produced a vector result instead of a scalar "
+            "result. It is not possible to compute the backward pass if the "
+            "forward result is not a (1,1) torch.Tensor."
+        )
+    else:
+        forward.backward()
+    
+    # store gradient for each passed tensor
+    gradients = {}
+    for i, t in enumerate(tensors):
+        gradients[i] = t.grad
+    
+    return gradients

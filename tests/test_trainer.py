@@ -8,8 +8,8 @@ from pathlib import Path
 from torch.utils.data import DataLoader
 from torchfitter.trainer import Trainer
 from torchfitter.utils import DataWrapper
+from torchfitter.conventions import ParamsDict
 from torchfitter.testing import change_model_params
-
 from sklearn.model_selection import train_test_split
 
 torch.manual_seed(0)
@@ -115,10 +115,10 @@ def test_trainer(train_config):
     )
 
     obtained_train_loss = np.array(
-        trainer.params_dict['history']['train_loss']
+        trainer.internal_state.get_state_dict()[ParamsDict.HISTORY][ParamsDict.HISTORY_TRAIN_LOSS]
     )
     obtained_val_loss = np.array(
-        trainer.params_dict['history']['validation_loss']
+        trainer.internal_state.get_state_dict()[ParamsDict.HISTORY][ParamsDict.HISTORY_VAL_LOSS]
     )
 
     np.testing.assert_almost_equal(obtained_train_loss, expected_train_loss)

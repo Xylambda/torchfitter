@@ -16,8 +16,12 @@ from torchfitter.callbacks.base import CallbackHandler
 from torchfitter.callbacks import (
     EarlyStopping, 
     LoggerCallback,
-    LearningRateScheduler
+    LearningRateScheduler,
+    ReduceLROnPlateau,
+    GPUStats
 )
+
+from torchfitter.callbacks.base import CallbackHandler, Callback
 
 torch.manual_seed(0)
 np.random.seed(0)
@@ -72,8 +76,8 @@ def train_config():
 
 def test_earlystopping(train_config):
     (
-        train_loader,
-        val_loader,
+        _,
+        _,
         model,
         criterion,
         optimizer,
@@ -89,11 +93,11 @@ def test_earlystopping(train_config):
         callbacks=[early_stopping]
     )
 
-    params_dict = trainer.params_dict
+    params_dict = trainer.internal_state.get_state_dict()
     early_stopping.on_fit_start(params_dict)
 
     for i in range(0, 20):
-        params_dict[ParamsDict.VAL_LOS] = 1
+        params_dict[ParamsDict.VAL_LOSS] = 1
         params_dict[ParamsDict.EPOCH_NUMBER] = i
 
         early_stopping.on_epoch_end(params_dict)
@@ -138,12 +142,17 @@ def test_logger_callback(caplog, train_config):
     msg = "Logger not stating where the training is running."
     assert caplog.records[0].message.startswith("Starting training process"), msg
 
-    log_msg = "Epoch: 1/10       | Train loss: 8444.365002   | Validation loss: 8672.904031   | Time/epoch:"
+    log_msg = "Epoch 1/10 | Train loss: 8444.36500 | Validation loss 8672.90403 | Time/epoch:"
     msg = "Logger not logging first epoch correctly"
     assert caplog.records[1].message.startswith(log_msg), msg
 
     msg = "Logger not logging end of training time"
     assert caplog.records[2].message.startswith("End of training. Total time: "), msg
+
+
+@pytest.mark.xfail
+def test_progress_bar_logger():
+    pass
 
 
 def test_learning_rate_scheduler(train_config):
@@ -202,7 +211,56 @@ def test_learning_rate_scheduler(train_config):
         0.0045000000000000005
     ]
 
-    obtained_lr = trainer.params_dict['history']['learning_rate']
+    obtained_lr = trainer.internal_state.get_state_dict()['history']['learning_rate']
 
     msg = "Error en LR values"
     expected_lr == obtained_lr, msg
+
+
+@pytest.mark.xfail
+def test_reduce_lr_on_plateau():
+    pass
+
+
+@pytest.mark.xfail
+def test_gpu_stats():
+    pass
+
+
+@pytest.mark.fail
+def test_callback_handler():
+
+    class CallbackTester(Callback):
+        def __init__(self) -> None:
+            super(CallbackTester, self).__init__()
+
+        def on_train_step_start(self, params_dict: dict) -> str:
+            expected = "on_train_step_start"
+
+        def on_train_step_end(self, params_dict: dict) -> str:
+            expected = "on_train_step_end"
+
+        def on_validation_step_start(self, params_dict: dict) -> str:
+            expected = "on_validation_step_start"
+
+        def on_validation_step_end(self, params_dict: dict) -> str:
+            expected = "on_validation_step_end"
+
+        def on_epoch_start(self, params_dict: dict) -> str:
+            expected = "on_epoch_start"
+
+        def on_epoch_end(self, params_dict: dict) -> str:
+            expected = "on_epoch_end"
+
+        def on_fit_start(self, params_dict: dict) -> str:
+            expected = "on_fit_start"
+
+        def on_fit_end(self, params_dict: dict) -> str:
+            expected = "on_fit_end"
+
+
+    # -------------------------------------------------------------------------
+    callback = CallbackTester()
+    handler = CallbackHandler([callback])
+
+    _dict = {'a': 'b'}

@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## [3.0.0] - 2021-07-27
+
+### Fixed
+
+- Solve bug in callbacks where the handler was not calling in appropiate order.
+
+### Removed
+- Remove `ElasticNet` regularization because the implementation was not correct.
+
+### Changed
+
+- Change `params_dict` in the Trainer to a specific class that tracks the internal state.
+- Change README.
+- Update tests.
+- Change logic of TQDM to be updated in each batch instead of in each epoch.
+- Change optimization loop to be of type `condition-loop` instead of `iteration-loop`. This is, the loop is now a `while` loop.
+
+### Added
+
+- Add `Manager` class to handle multiple experiments.
+- Add support for computing metrics in the optimization loop via `torchmetrics`.
+- Add `GPUStats`, `ReduceLROnPlateau` and `ProgressBarLogger` callbacks.
+- Add testing utility to check gradients: `compute_forward_gradient`.
+- Add more functions to `utils`: `FastTensorDataLoader`, `check_model_on_cuda`.
 
 ## [2.0.2] - 2021-05-10
 
@@ -24,6 +48,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 - Added new `reset_parameters` method in the trainer.
 - Added requirements file for example.
+- Added `trainer` example in `.py` format.
+- Added `manager.ipynb` example.
 
 ### Fixed
 

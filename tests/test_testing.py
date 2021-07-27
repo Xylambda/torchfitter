@@ -1,4 +1,5 @@
 import torch
+import pytest
 import torch.nn as nn
 
 from torchfitter.testing import change_model_params
@@ -21,3 +22,7 @@ def test_change_model_params():
     msg = "Error when assigning new weights."
     assert expected_weigths == model.weight.item(), msg
 
+
+@pytest.mark.xfail
+def test_compute_forward_gradient():
+    pass

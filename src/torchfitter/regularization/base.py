@@ -1,4 +1,6 @@
+""" Base class for implementing regularization procedures, """
 import torch
+from typing import Generator
 
 
 class RegularizerBase:
@@ -15,12 +17,35 @@ class RegularizerBase:
         Whether to apply regularization over bias terms (True) or not (False).
     """
 
-    def __init__(self, regularization_rate, biases=False):
+    def __init__(self, regularization_rate: float, biases: bool=False):
         self.rate = regularization_rate
         self.biases = biases
 
-    def __call__(self, named_parameters):
-        return self.compute_penalty(named_parameters)
+    def __repr__(self):
+        rpr = f"""RegularizerBase(
+            regularization_rate={self.rate},
+            biases={self.biases}
+        )"""
+        return rpr
 
-    def compute_penalty(self, named_parameters):
+    def __call__(
+        self,
+        named_parameters: Generator[str, torch.Tensor, None],
+        device: torch.device
+    ) -> torch.Tensor:
+        return self.compute_penalty(named_parameters, device)
+
+    def compute_penalty(
+        self,
+        named_parameters: Generator[str, torch.Tensor, None],
+        device: torch.device
+    ) -> torch.Tensor:
+        """
+        Parameters
+        ----------
+        named_parameters : generator
+            Named parameters generator from a torch.nn.Module.
+        devide : torch.device
+            Device where to compute the regularization.
+        """
         raise NotImplementedError()
