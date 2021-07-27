@@ -1,142 +1,48 @@
 """ Module that contains Manager class. """
+import os
 import torch
+import random
 import logging
-import torchfitter
 import numpy as np
-
-from torchfitter.conventions import ManagerParamsDict, ParamsDict
-from torchfitter.callbacks.base import ManagerCallbackHandler
+from typing import Callable, Iterable
 
 
 class Manager:
-    """Manager of Trainers.
-
-    Run different experiments for the given trainer and seeds. An experiment
-    will be runned for each seed. The model must to have the method 
-    'reset_parameters' implemented in order to run the manager.
+    """
+    This class runs multiple experiments (one for each seed) sequentially.
 
     Parameters
     ----------
-    trainer : torchfitter.trainer.Trainer
-    seeds : iterable of int
-        Random seeds for the experiments. A number of experiments equal to 
-        'seeds' iterable length will be runned.
-    model_initial_state : dict
-        Model initial state.
-    optimizer_initial_state : dict
-        Optimizer initial state.
-
-    Warning
-    -------
-    This class has not been tested yet. Unexpected behaviour may occur.
+    seeds : iterable of ints
+        Seeds to use in the experiments.
     """
-    def __init__(
-        self,
-        trainer: torchfitter.trainer.Trainer,
-        seeds: list,
-        callbacks: list=None
-    ):
+    def __init__(self, seeds: Iterable[int], folder_name: str):
         self.seeds = seeds
-        self.trainer = trainer
-        self.callbacks_list = callbacks
+        self.folder_name = folder_name
 
-        self.save_initial_states(
-            model_state=self.trainer.model.state_dict(), 
-            optim_state=self.trainer.optimizer.state_dict()
-        )
+        if str(self.folder_name) not in os.listdir():
+            os.mkdir(self.folder_name)
+        
+    def run_experiments(self, experiment_func: Callable) -> None:
+        """Run 'experiment_func' for each random seed.
 
-        # attributes
-        self.params_dict = self._initialize_params_dict()
-        self.callback_handler = ManagerCallbackHandler(
-            callbacks_list=self.callbacks_list
-        )
+        All the logic, including model and optimizer states saving, must be 
+        coded in the 'experiment_func' variable.
 
-        # set loggin level
-        logging.basicConfig(level=logging.INFO)
-
-    def _initialize_params_dict(self):
-        params_dict = {
-            ManagerParamsDict.SEED_LIST: self.seeds,
-            ManagerParamsDict.CURRENT_SEED: None,
-            ManagerParamsDict.MODEL_STATE: None,
-            ManagerParamsDict.OPTIMIZER_STATE: None,
-            ManagerParamsDict.HISTORY: None
-        }
-
-        return params_dict
-
-    def _update_params_dict(self, **kwargs):
-        """
-        Update paramaters dictionary with the passed key-value pairs.
+        'experiment_func' must receive 2 arguments: 'seed' and 'folder_name'. 
+        These arguments may be used by the user to create the necessary folders
+        to save the experiment.
 
         Parameters
         ----------
-        kwargs : dict
-            Dictionary with keys to update.
+        experiment_func : function
+            Experiment function.
         """
-        for key, value in kwargs.items():
-            self.params_dict[key] = value
-
-    def run_experiments(
-        self,
-        train_loader: torch.utils.data.dataloader.DataLoader,
-        val_loader: torch.utils.data.dataloader.DataLoader,
-        epochs: int
-    ) -> None:
-        """Run experiments.
-
-        Run multiple experiments for differents seeds and saves the model 
-        parameters, the optimizer state and the history of an experiment.
-
-        Parameters
-        ----------
-        train_loader : torch.DataLoader
-            DataLoader containing train dataset.
-        val_loader : torch.DataLoader
-            DataLoader containing validation dataset.
-        epochs : int
-            Number of training epochs.
-        """
-        self.callback_handler.on_experiments_begin(self.params_dict)
-
         for seed in self.seeds:
-            self._set_seed(seed)
-            self._update_params_dict(
-                **{ManagerParamsDict.CURRENT_SEED: seed}
-            )
-
-            # fit model
-            self.callback_handler.on_seed_experiment_begin(self.params_dict)
-            self.trainer.fit(train_loader, val_loader, epochs)
-            self._update_params_dict(
-                **{
-                    ManagerParamsDict.MODEL_STATE: self.trainer.model.state_dict(),
-                    ManagerParamsDict.OPTIMIZER_STATE: self.trainer.optimizer.state_dict(),
-                    ManagerParamsDict.HISTORY: self.trainer.internal_state.get_state_dict()[ParamsDict.HISTORY]
-                }
-            )
-            self.callback_handler.on_seed_experiment_end(self.params_dict)
-            self.reset_parameters()
-
-        self.callback_handler.on_experiments_end(self.params_dict)
-
-    def reset_parameters(self) -> None:
-        # reset model
-        self.trainer.reset_parameters(
-            reset_callbacks=True, reset_model=True
-        )
-
-        # reset optimizer
-        self.trainer.optimizer.load_state_dict(
-            torch.load('optimizer_initial_state.pt')
-        )
+            self._set_seed(seed=seed)
+            experiment_func(seed=seed, folder_name=self.folder_name)
 
     def _set_seed(self, seed: int) -> None:
+        random.seed(seed)
         np.random.seed(seed)
         torch.manual_seed(seed)
-
-    def save_initial_states(
-        self, model_state: dict, optim_state: dict
-    ) -> None:
-        torch.save(model_state, 'model_initial_state.pt')
-        torch.save(optim_state, 'optimizer_initial_state.pt')

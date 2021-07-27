@@ -55,34 +55,6 @@ class ParamsDict:
     PROG_BAR = 'progress_bar'
 
 
-class ManagerParamsDict:
-    """
-    Conventions for the internal parameters of torchfitter.manager.Manager 
-    class.
-
-    Attributes
-    ----------
-    CURRENT_SEED : str
-        Current seed that is being processed.
-    SEED_LIST : str
-        Seeds list. Each seed is an experiment.
-    MODEL_STATE : str
-        State dictionary of the model.
-    OPTIMIZER_STATE : str
-        State dictionary of the optimizer.
-    HISTORY : str
-        Dictionary containing the metrics:
-        * ParamsDict.HISTORY_TRAIN_LOSS
-        * ParamsDict.HISTORY_VAL_LOSS
-        * ParamsDict.HISTORY_LR
-    """
-    CURRENT_SEED = 'current_seed'
-    SEED_LIST = 'seed_list'
-    MODEL_STATE = 'model_state'
-    OPTIMIZER_STATE = 'optim_state'
-    HISTORY = 'history'
-
-
 class BarFormat:
     """
     Conventions for the bar formatting of tqdm progress bar. See references for

@@ -283,25 +283,3 @@ class GPUStats(Callback):
 
     def reset_parameters(self):
         pass # no parameters to reset
-
-
-class LearningRateFinder(Callback):
-    """
-    TODO: I think this should go in utils, since it is not really a callback.
-
-    References
-    ----------
-    .. [1] Sylvain Gugger - How do you find a good learning rate? 
-       https://sgugger.github.io/how-do-you-find-a-good-learning-rate.html
-    
-    .. [2] Leslie N. Smith - Cyclical Learning Rates for Training Neural 
-       Networks
-       https://arxiv.org/pdf/1506.01186.pdf
-
-    .. [3] aychang - Automated Learning Rate Suggester
-       https://forums.fast.ai/t/automated-learning-rate-suggester/44199
-
-    https://gist.github.com/muellerzr/0634c486bd4939049314632ccc3f7a03
-    """
-    def __init__(self):
-        super(LearningRateFinder, self).__init__()

@@ -226,35 +226,34 @@ def test_gpu_stats():
 
 @pytest.mark.fail
 def test_callback_handler():
-    import inspect
 
     class CallbackTester(Callback):
         def __init__(self) -> None:
-            self.callback_type = '<Trainer class>'
+            super(CallbackTester, self).__init__()
 
         def on_train_step_start(self, params_dict: dict) -> str:
-            return "on_train_step_start"
+            expected = "on_train_step_start"
 
         def on_train_step_end(self, params_dict: dict) -> str:
-            return "on_train_step_end"
+            expected = "on_train_step_end"
 
         def on_validation_step_start(self, params_dict: dict) -> str:
-            return "on_validation_step_start"
+            expected = "on_validation_step_start"
 
         def on_validation_step_end(self, params_dict: dict) -> str:
-            return "on_validation_step_end"
+            expected = "on_validation_step_end"
 
         def on_epoch_start(self, params_dict: dict) -> str:
-            return "on_epoch_start"
+            expected = "on_epoch_start"
 
         def on_epoch_end(self, params_dict: dict) -> str:
-            return "on_epoch_end"
+            expected = "on_epoch_end"
 
         def on_fit_start(self, params_dict: dict) -> str:
-            return "on_fit_start"
+            expected = "on_fit_start"
 
         def on_fit_end(self, params_dict: dict) -> str:
-            return "on_fit_end"
+            expected = "on_fit_end"
 
 
     # -------------------------------------------------------------------------

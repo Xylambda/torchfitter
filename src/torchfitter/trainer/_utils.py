@@ -1,8 +1,7 @@
 """ Utilities for the training process. """
 import torch
-from torch._C import device
 import torchmetrics
-from typing import Iterable, Dict, List, Type
+from typing import Dict, List
 from torchfitter.conventions import ParamsDict
 
 
