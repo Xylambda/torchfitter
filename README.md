@@ -6,7 +6,7 @@
 ![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/Xylambda/torchfitter?label=VERSION&style=badge)
 ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/Xylambda/torchfitter?style=badge)
 ![GitHub issues](https://img.shields.io/github/issues/Xylambda/torchfitter?style=badge)
-![workflow](https://github.com/Xylambda/torchfitter/actions/workflows/cicd.yaml/badge.svg)
+![workflow](https://github.com/Xylambda/torchfitter/actions/workflows/cicd.yml/badge.svg)
 [![doc](https://img.shields.io/badge/DOCS-documentation-blue.svg?style=badge)](https://xylambda.github.io/torchfitter/)
 
 `torchfitter` is a simple library I created to ease the training of PyTorch
