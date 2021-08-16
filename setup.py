@@ -23,7 +23,7 @@ setup(
     install_requires=[
         "tqdm",
         "numpy",
-        "torchmetrics"
+        "torchmetrics",
         "torch>=1.1.0",
     ],
 )
