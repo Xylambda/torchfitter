@@ -37,8 +37,7 @@ jobs:
       - name: Build docs
         run: |
           cd docs
-          sphinx-apidoc.exe -M -P -f -e -o source/ ../src/
-          sphinx-build -b html source/ build/html
+          make html
           touch build/html/.nojekyll
       - name: Deploy docs
         uses: JamesIves/github-pages-deploy-action@releases/v3
