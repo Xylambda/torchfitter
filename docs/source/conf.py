@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.abspath('..'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'kalmanfilter'
+project = 'torchfitter'
 copyright = '2021, Alejandro Pérez-Sanjuán'
 author = 'Alejandro Pérez-Sanjuán'
 
