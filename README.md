@@ -1,6 +1,6 @@
 
 <p align="center">
-  <img src="img/logo.png" width="320">
+  <img src="img/logo.png" width="650">
 </p>
 
 ![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/Xylambda/torchfitter?label=VERSION&style=badge)
