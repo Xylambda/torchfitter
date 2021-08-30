@@ -87,7 +87,7 @@ class EarlyStopping(Callback):
 
 class ProgressBarLogger(Callback):
     """
-    Class to using the tqdm bar.
+    Class to log stats on the tqdm bar.
     """
 
     def __init__(self):
@@ -213,6 +213,7 @@ class LearningRateScheduler(Callback):
         return f"LearningRateScheduler(scheduler={self.scheduler}, metric={self.metric})"
 
     def on_train_step_end(self, params_dict):
+        # TODO: this needs a redesign on the trainer_state size and how metrics are handled
         if self.metric is None:
             self.scheduler.step()
         else:
@@ -239,12 +240,18 @@ class ReduceLROnPlateau(Callback):
         Scheduler.
     metric : str, optional, default : conventions.ParamsDict.TRAIN_LOSS
         Metric to track in order to reduce the learning rate.
+    on_train : bool, optional, default: True
+        Required when using any of the metrics passed in the 'metrics' 
+        parameter from the Trainer class. If True, the selected metric will be
+        the metric value for the train set; if False, the selected metric will 
+        be the metric value for the validation set.
     """
-    def __init__(self, scheduler, metric=ParamsDict.TRAIN_LOSS):
+    def __init__(self, scheduler, metric=ParamsDict.TRAIN_LOSS, on_train=True):
         super(ReduceLROnPlateau, self).__init__()
 
         self.scheduler = scheduler
         self.metric = metric
+        self.on_train = on_train
         self.__restart_dict = dict(
             (k, self.scheduler.__dict__[k]) for k in self.scheduler.__dict__.keys() if k != 'optimizer'
         )
@@ -254,8 +261,14 @@ class ReduceLROnPlateau(Callback):
         return f"ReduceLROnPlateau(scheduler={sch}, metric={self.metric})"
         
     def on_train_step_end(self, params_dict):
-        # we apply the scheduler over the training loss
-        metric = params_dict[self.metric]
+
+        # TODO: this needs a redesign on the trainer_state size and how metrics are handled
+        key = 'train' if self.on_train else 'validation'
+
+        try:
+            metric = params_dict[self.metric]
+        except:
+            metric = params_dict[ParamsDict.HISTORY][self.metric][key][-1]
         self.scheduler.step(metric)
             
     def reset_parameters(self):
@@ -273,6 +286,9 @@ class GPUStats(Callback):
     queries : list of str
         List of queries to log
     format : str
+        Queries format.
+    update_step : int, optional, default: 50
+        Logs will be performed every 'update_step'.
     
     Notes
     -----
@@ -290,15 +306,23 @@ class GPUStats(Callback):
             "utilization.memory",
             "memory.used"
         ],
+        update_step=50
     ):
         super(GPUStats, self).__init__()
 
         self.queries = queries    
         self.format = format
+        self.update_step = update_step
     
     def on_epoch_end(self, params_dict):
-        stdout = self._get_queries(queries=self.queries, format=self.format)
-        logging.info(*stdout, sep=' | ')
+        epoch_number = params_dict[ParamsDict.EPOCH_NUMBER]
+
+        if epoch_number == 1 or epoch_number % self.update_step == 0:
+            stdout = self._get_queries(
+                queries=self.queries, format=self.format
+            )
+            msg = " | ".join(map(str, stdout)) # unpack and format
+            logging.info(msg)
         
     def _get_queries(self, queries, format):
         stdout = []

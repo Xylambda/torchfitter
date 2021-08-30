@@ -2,7 +2,11 @@ import torch
 import pytest
 import torch.nn as nn
 
-from torchfitter.testing import change_model_params
+from torchfitter.testing import (
+    change_model_params,
+    compute_forward_gradient,
+    check_monotonically_decreasing     
+)
 
 
 def test_change_model_params():
@@ -25,4 +29,9 @@ def test_change_model_params():
 
 @pytest.mark.xfail
 def test_compute_forward_gradient():
+    pass
+
+
+@pytest.mark.xfail
+def test_check_monotonically_decreasing():
     pass

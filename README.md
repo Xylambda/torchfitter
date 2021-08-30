@@ -9,17 +9,16 @@
 ![workflow](https://github.com/Xylambda/torchfitter/actions/workflows/cicd.yml/badge.svg)
 [![doc](https://img.shields.io/badge/DOCS-documentation-blue.svg?style=badge)](https://xylambda.github.io/torchfitter/)
 
-`torchfitter` is a simple library I created to ease the training of PyTorch
-models. It features a class called `Trainer` that includes the basic 
-functionality to fit models in a Keras-like style.
+`torchfitter` is a simple library to ease the training of PyTorch models. It 
+features a class called `Trainer` that includes the basic functionality to fit 
+models in a Keras-like style.
 
 The library also provides a callbacks API that can be used to interact with
 the model during the training process, as well as a set of basic regularization
 procedures.
 
 Additionally, you will find the `Manager` class which allows you to run 
-multiple experiments for different random seeds. The class is still in testing
-stage, so unexpected behaviour may occur when using it.
+multiple experiments for different random seeds.
 
 ## Installation
 **Normal user**
