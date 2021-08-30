@@ -63,7 +63,7 @@ def compute_forward_gradient(module: torch.nn.Module, *tensors) -> dict:
     forward = module(*tensors)
     
     # compute gradients
-    if forward.shape != torch.Size([1]):
+    if forward.shape != torch.Size([1]) and forward.shape != torch.Size([]):
         raise ValueError(
             "The passed tensors produced a vector result instead of a scalar "
             "result. It is not possible to compute the backward pass if the "

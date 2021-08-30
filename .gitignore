@@ -42,6 +42,7 @@ celerybeat-schedule
 coverage.xml
 develop-eggs/
 dist/
+checkpoint.pt
 dmypy.json
 docs/_build/
 downloads/

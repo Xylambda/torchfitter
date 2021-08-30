@@ -298,7 +298,6 @@ the trainer cares about the optimization process.
 Thank you! Do not hesitate to open an issue and I'll do my best to answer you.
 
 ## CREDITS
-* <div>Icons made by <a href="https://www.flaticon.com/authors/vignesh-oviyan" title="Vignesh Oviyan">Vignesh Oviyan</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></div>
 
 * [Keras API](https://keras.io/api/).
 

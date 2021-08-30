@@ -88,11 +88,7 @@ class Trainer:
         )
         self.metrics_handler = MetricsHandler(metrics_list=self.metrics_list)
         self.__bar_format = BarFormat.FORMAT
-
-        if torch.cuda.is_available():
-            self.__scaler = torch.cuda.amp.GradScaler(
-                enabled=self.mixed_precision
-            )
+        self.__scaler = torch.cuda.amp.GradScaler(enabled=self.mixed_precision)
 
         logging.basicConfig(level=logging.INFO)
 
@@ -230,10 +226,7 @@ class Trainer:
         scaler : torch.cuda.amp.grad_scaler.GradScaler
             The gradient scaler you want to use.
         """
-        if not torch.cuda.is_available():
-            raise ValueError("cuda is not available")
-        else:
-            self.__scaler = scaler
+        self.__scaler = scaler
 
     def reset_parameters(
         self, reset_callbacks=False, reset_model=False
