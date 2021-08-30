@@ -217,7 +217,9 @@ class Trainer:
 
         The trainer creates a gradient scaler by default with the default 
         values for the constructor arguments except 'enabled', which will be 
-        set the same as 'mixed_precision' variable value.
+        set the same as 'mixed_precision' variable value. With this function 
+        you can set the scaler to be an instance with the desired argument 
+        values.
 
         Parameters
         ----------
