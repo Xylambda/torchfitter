@@ -283,7 +283,8 @@ configuration we have been creating:</p>
 <span class="gp">... </span><span class="n">optimizer</span><span class="o">=</span><span class="n">optimizer</span><span class="p">,</span>
 <span class="gp">... </span><span class="n">regularizer</span><span class="o">=</span><span class="n">regularizer</span><span class="p">,</span>
 <span class="gp">... </span><span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
-<span class="gp">... </span><span class="n">callbacks</span><span class="o">=</span><span class="p">[</span><span class="n">logger</span><span class="p">,</span> <span class="n">early_stopping</span><span class="p">,</span> <span class="n">scheduler</span><span class="p">]</span>
+<span class="gp">... </span><span class="n">callbacks</span><span class="o">=</span><span class="p">[</span><span class="n">logger</span><span class="p">,</span> <span class="n">early_stopping</span><span class="p">,</span> <span class="n">scheduler</span><span class="p">],</span>
+<span class="gp">... </span><span class="n">mixed_precision</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="c1"># only works with GPU</span>
 <span class="gp">... </span><span class="p">)</span>
 </pre></div>
 </div>
@@ -297,7 +298,7 @@ different devices.</p>
 <p>The training information you get will depend on your callbacks. A progress bar
 will also be displayed unless <cite>disable_pbar</cite> is set to <cite>True</cite> in the <cite>fit</cite>
 method.</p>
-<p>After the optimization process ends, the model is now ready to use.</p>
+<p>After the optimization process ends the model is ready to use.</p>
 </section>
 <section id="callbacks-system">
 <h2>Callbacks System<a class="headerlink" href="#callbacks-system" title="Permalink to this headline">¶</a></h2>
@@ -306,6 +307,223 @@ provide different interaction points, at different stages in the optimization
 loop.</p>
 <p>This callback system <strong>was not</strong> designed by me. It is somewhat a port from the
 Keras callbacks system.</p>
+<p>The callbacks API currently has these methods to interact with the model:</p>
+<ul class="simple">
+<li><p><strong>on_train_step_start</strong>: called at the start of a training step.</p></li>
+<li><p><strong>on_train_step_end</strong>: called at the end of a training step.</p></li>
+<li><p><strong>on_validation_step_start</strong>:: called at the start of a validation step.</p></li>
+<li><p><strong>on_validation_step_end</strong>: called at the end of a validation step.</p></li>
+<li><p><strong>on_epoch_start</strong>: called at the start of an epoch.</p></li>
+<li><p><strong>on_epoch_end</strong>: called at the end of an epoch.</p></li>
+<li><p><strong>on_fit_start</strong>: called at the start of the fitting process.</p></li>
+<li><p><strong>on_fit_end</strong>: called at the end of the fitting process.</p></li>
+</ul>
+<p>You can create your own callbacks by subclassing the Base callback and
+overriding the methods where you want to perform something.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">torchfitter.conventions</span> <span class="kn">import</span> <span class="n">ParamsDict</span>
+<span class="kn">from</span> <span class="nn">torchfitter.callbacks.base</span> <span class="kn">import</span> <span class="n">Callback</span>
+
+
+<span class="k">class</span> <span class="nc">ModelSaver</span><span class="p">(</span><span class="n">Callback</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ModelSaver</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">"ModelSaver()"</span>
+
+    <span class="k">def</span> <span class="nf">on_epoch_end</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">params_dict</span><span class="p">):</span>
+        <span class="n">epoch</span> <span class="o">=</span> <span class="n">params_dict</span><span class="p">[</span><span class="n">ParamsDict</span><span class="o">.</span><span class="n">EPOCH_NUMBER</span><span class="p">]</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">params_dict</span><span class="p">[</span><span class="n">ParamsDict</span><span class="o">.</span><span class="n">MODEL</span><span class="p">]</span>
+        <span class="n">torch</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">state_dict</span><span class="p">(),</span> <span class="sa">f</span><span class="s2">"model_</span><span class="si">{</span><span class="n">epoch</span><span class="si">}</span><span class="s2">.pt"</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Each one of the methods receives a <cite>params_dict</cite> dictionary containing
+different metrics and objects that you can use to create certain logic. The
+list of objects available can be known using:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">torchfitter.conventions</span> <span class="kn">import</span> <span class="n">ParamsDict</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="p">[(</span><span class="n">x</span><span class="p">,</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">ParamsDict</span><span class="p">,</span> <span class="n">x</span><span class="p">))</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">ParamsDict</span><span class="o">.</span><span class="vm">__dict__</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">x</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">'__'</span><span class="p">)]</span>
+<span class="gp">... </span><span class="p">[(</span><span class="s1">'TRAIN_LOSS'</span><span class="p">,</span> <span class="s1">'training_loss'</span><span class="p">),</span>
+<span class="gp">... </span><span class="p">(</span><span class="s1">'VAL_LOSS'</span><span class="p">,</span> <span class="s1">'validation_loss'</span><span class="p">),</span>
+<span class="gp">... </span><span class="p">(</span><span class="s1">'EPOCH_TIME'</span><span class="p">,</span> <span class="s1">'epoch_time'</span><span class="p">),</span>
+<span class="gp">... </span><span class="p">(</span><span class="s1">'EPOCH_NUMBER'</span><span class="p">,</span> <span class="s1">'epoch_number'</span><span class="p">),</span>
+<span class="gp">... </span><span class="p">(</span><span class="s1">'TOTAL_EPOCHS'</span><span class="p">,</span> <span class="s1">'total_epochs'</span><span class="p">),</span>
+<span class="gp">... </span><span class="p">(</span><span class="s1">'TOTAL_TIME'</span><span class="p">,</span> <span class="s1">'total_time'</span><span class="p">),</span>
+<span class="gp">... </span><span class="p">(</span><span class="s1">'STOP_TRAINING'</span><span class="p">,</span> <span class="s1">'stop_training'</span><span class="p">),</span>
+<span class="gp">... </span><span class="p">(</span><span class="s1">'DEVICE'</span><span class="p">,</span> <span class="s1">'device'</span><span class="p">),</span>
+<span class="gp">... </span><span class="p">(</span><span class="s1">'MODEL'</span><span class="p">,</span> <span class="s1">'model'</span><span class="p">),</span>
+<span class="gp">... </span><span class="p">(</span><span class="s1">'HISTORY'</span><span class="p">,</span> <span class="s1">'history'</span><span class="p">),</span>
+<span class="gp">... </span><span class="p">(</span><span class="s1">'HISTORY_TRAIN_LOSS'</span><span class="p">,</span> <span class="s1">'train_loss'</span><span class="p">),</span>
+<span class="gp">... </span><span class="p">(</span><span class="s1">'HISTORY_VAL_LOSS'</span><span class="p">,</span> <span class="s1">'validation_loss'</span><span class="p">),</span>
+<span class="gp">... </span><span class="p">(</span><span class="s1">'HISTORY_LR'</span><span class="p">,</span> <span class="s1">'learning_rate'</span><span class="p">),</span>
+<span class="gp">... </span><span class="p">(</span><span class="s1">'PROG_BAR'</span><span class="p">,</span> <span class="s1">'progress_bar'</span><span class="p">)]</span>
+</pre></div>
+</div>
+<p>And you can also check the doc to understand the meaning of each one of the
+parameters:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">torchfitter.conventions</span> <span class="kn">import</span> <span class="n">ParamsDict</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">ParamsDict</span><span class="o">.</span><span class="vm">__doc__</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="regularization">
+<h2>Regularization<a class="headerlink" href="#regularization" title="Permalink to this headline">¶</a></h2>
+<p>The regularization system works like the callbacks system: <cite>torchfitter</cite>
+provides a base class that must be subclassed. Then, the method <cite>compute_penalty</cite>
+must be filled with your algorithm. An example implementing L1</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">torchfitter.regularization.base</span> <span class="kn">import</span> <span class="n">RegularizerBase</span>
+
+
+<span class="k">class</span> <span class="nc">L1Regularization</span><span class="p">(</span><span class="n">RegularizerBase</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">regularization_rate</span><span class="p">,</span> <span class="n">biases</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">L1Regularization</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">regularization_rate</span><span class="p">,</span> <span class="n">biases</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">compute_penalty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">named_parameters</span><span class="p">,</span> <span class="n">device</span><span class="p">):</span>
+        <span class="c1"># Initialize with tensor, cannot be scalar</span>
+        <span class="n">penalty_term</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">named_parameters</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">biases</span> <span class="ow">and</span> <span class="n">name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">"bias"</span><span class="p">):</span>
+                <span class="k">pass</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">penalty_term</span> <span class="o">=</span> <span class="n">penalty_term</span> <span class="o">+</span> <span class="n">param</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">p</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">rate</span> <span class="o">*</span> <span class="n">penalty_term</span>
+</pre></div>
+</div>
+<p>Notice how the <cite>penalty_term</cite> is moved to the given device to avoid problems
+with tensors stored at different devices.</p>
+</section>
+<section id="running-multiple-experiments">
+<h2>Running multiple experiments<a class="headerlink" href="#running-multiple-experiments" title="Permalink to this headline">¶</a></h2>
+<p>With <cite>torchfitter</cite> you can run multiple experiments sequentially for different
+seeds. In order to perform various experiments, you must define an experiment
+inside a function and pass it to the <cite>Manager</cite> class.</p>
+<p>The function must have 2 arguments: <cite>seed</cite> and <cite>folder_name</cite> that you can use
+to save the experiment.</p>
+<p>Let’s see an example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">torch.nn</span> <span class="k">as</span> <span class="nn">nn</span>
+<span class="kn">import</span> <span class="nn">torch.optim</span> <span class="k">as</span> <span class="nn">optim</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">torch.utils.data</span> <span class="kn">import</span> <span class="n">DataLoader</span>
+<span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
+
+<span class="kn">from</span> <span class="nn">torchfitter</span> <span class="kn">import</span> <span class="n">io</span>
+<span class="kn">from</span> <span class="nn">torchfitter.trainer</span> <span class="kn">import</span> <span class="n">Trainer</span>
+<span class="kn">from</span> <span class="nn">torchfitter.manager</span> <span class="kn">import</span> <span class="n">Manager</span>
+<span class="kn">from</span> <span class="nn">torchfitter.utils</span> <span class="kn">import</span> <span class="n">DataWrapper</span>
+<span class="kn">from</span> <span class="nn">torchfitter.regularization</span> <span class="kn">import</span> <span class="n">L1Regularization</span>
+<span class="kn">from</span> <span class="nn">torchfitter.callbacks</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">LoggerCallback</span><span class="p">,</span>
+    <span class="n">EarlyStopping</span><span class="p">,</span>
+    <span class="n">LearningRateScheduler</span>
+<span class="p">)</span>
+
+<span class="n">DATA_PATH</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">path_to_data</span><span class="o">&gt;</span>
+
+<span class="c1"># define experiment function</span>
+<span class="k">def</span> <span class="nf">experiment_func</span><span class="p">(</span><span class="n">seed</span><span class="p">,</span> <span class="n">folder_name</span><span class="p">):</span>
+    <span class="n">device</span> <span class="o">=</span> <span class="s2">"cuda"</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="s2">"cpu"</span>
+    <span class="n">subfolder</span> <span class="o">=</span> <span class="n">folder_name</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"experiment_</span><span class="si">{</span><span class="n">seed</span><span class="si">}</span><span class="s2">"</span>
+
+    <span class="k">if</span> <span class="sa">f</span><span class="s2">"experiment_</span><span class="si">{</span><span class="n">seed</span><span class="si">}</span><span class="s2">"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">folder_name</span><span class="p">):</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">subfolder</span><span class="p">)</span>
+
+    <span class="c1"># ---------------------------------------------------------------------</span>
+    <span class="c1"># split</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">DATA_PATH</span> <span class="o">/</span> <span class="s2">"features.npy"</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">DATA_PATH</span> <span class="o">/</span> <span class="s2">"labels.npy"</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># simplest case of cross-validation</span>
+    <span class="n">X_train</span><span class="p">,</span> <span class="n">X_val</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_val</span> <span class="o">=</span> <span class="n">train_test_split</span><span class="p">(</span>
+        <span class="n">X</span><span class="p">,</span>
+        <span class="n">y</span><span class="p">,</span>
+        <span class="n">test_size</span><span class="o">=</span><span class="mf">0.33</span><span class="p">,</span>
+        <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span>
+    <span class="p">)</span>
+
+    <span class="c1"># wrap data in Dataset</span>
+    <span class="n">train_wrapper</span> <span class="o">=</span> <span class="n">DataWrapper</span><span class="p">(</span>
+        <span class="n">X_train</span><span class="p">,</span>
+        <span class="n">y_train</span><span class="p">,</span>
+        <span class="n">dtype_X</span><span class="o">=</span><span class="s1">'float'</span><span class="p">,</span>
+        <span class="n">dtype_y</span><span class="o">=</span><span class="s1">'float'</span>
+    <span class="p">)</span>
+    <span class="n">val_wrapper</span> <span class="o">=</span> <span class="n">DataWrapper</span><span class="p">(</span>
+        <span class="n">X_val</span><span class="p">,</span>
+        <span class="n">y_val</span><span class="p">,</span>
+        <span class="n">dtype_X</span><span class="o">=</span><span class="s1">'float'</span><span class="p">,</span>
+        <span class="n">dtype_y</span><span class="o">=</span><span class="s1">'float'</span>
+    <span class="p">)</span>
+
+    <span class="c1"># torch Loaders</span>
+    <span class="n">train_loader</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span><span class="n">train_wrapper</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">pin_memory</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">val_loader</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span><span class="n">val_wrapper</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">pin_memory</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1"># ---------------------------------------------------------------------</span>
+    <span class="c1"># model creatiom</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">in_features</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">out_features</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+    <span class="c1"># optimization settings</span>
+    <span class="n">regularizer</span> <span class="o">=</span> <span class="n">L1Regularization</span><span class="p">(</span><span class="n">regularization_rate</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">biases</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">criterion</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">MSELoss</span><span class="p">()</span>
+    <span class="n">optimizer</span> <span class="o">=</span> <span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.005</span><span class="p">)</span>
+
+    <span class="c1"># ---------------------------------------------------------------------</span>
+    <span class="n">callbacks</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">LoggerCallback</span><span class="p">(</span><span class="n">update_step</span><span class="o">=</span><span class="mi">100</span><span class="p">),</span>
+        <span class="n">EarlyStopping</span><span class="p">(</span><span class="n">patience</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">load_best</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">subfolder</span> <span class="o">/</span> <span class="s1">'checkpoint.pt'</span><span class="p">),</span>
+        <span class="n">LearningRateScheduler</span><span class="p">(</span>
+            <span class="n">scheduler</span><span class="o">=</span><span class="n">optim</span><span class="o">.</span><span class="n">lr_scheduler</span><span class="o">.</span><span class="n">StepLR</span><span class="p">(</span><span class="n">optimizer</span><span class="p">,</span> <span class="n">step_size</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">gamma</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
+        <span class="p">)</span>
+    <span class="p">]</span>
+
+    <span class="c1"># trainer</span>
+    <span class="n">trainer</span> <span class="o">=</span> <span class="n">Trainer</span><span class="p">(</span>
+        <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
+        <span class="n">criterion</span><span class="o">=</span><span class="n">criterion</span><span class="p">,</span>
+        <span class="n">optimizer</span><span class="o">=</span><span class="n">optimizer</span><span class="p">,</span>
+        <span class="n">regularizer</span><span class="o">=</span><span class="n">regularizer</span><span class="p">,</span>
+        <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
+        <span class="n">callbacks</span><span class="o">=</span><span class="n">callbacks</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># run training</span>
+    <span class="n">trainer</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_loader</span><span class="p">,</span> <span class="n">val_loader</span><span class="p">,</span> <span class="mi">5000</span><span class="p">,</span> <span class="n">disable_pbar</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1"># ---------------------------------------------------------------------</span>
+    <span class="c1"># model state</span>
+    <span class="n">torch</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">trainer</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">state_dict</span><span class="p">(),</span> <span class="n">subfolder</span> <span class="o">/</span> <span class="s1">'model_state.pt'</span><span class="p">)</span>
+
+    <span class="c1"># optim state</span>
+    <span class="n">torch</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">trainer</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">state_dict</span><span class="p">(),</span> <span class="n">subfolder</span> <span class="o">/</span> <span class="s1">'optim_state.pt'</span><span class="p">)</span>
+
+    <span class="c1"># history</span>
+    <span class="n">io</span><span class="o">.</span><span class="n">save_pickle</span><span class="p">(</span>
+        <span class="n">obj</span><span class="o">=</span><span class="n">trainer</span><span class="o">.</span><span class="n">internal_state</span><span class="o">.</span><span class="n">get_state_dict</span><span class="p">()[</span><span class="s1">'history'</span><span class="p">],</span>
+        <span class="n">path</span><span class="o">=</span><span class="n">subfolder</span> <span class="o">/</span> <span class="s1">'history.pkl'</span>
+    <span class="p">)</span>
+
+<span class="c1"># define random seeds</span>
+<span class="n">seeds</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+<span class="n">folder</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s1">'experiments'</span><span class="p">)</span>
+
+<span class="n">manager</span> <span class="o">=</span> <span class="n">Manager</span><span class="p">(</span>
+    <span class="n">seeds</span><span class="o">=</span><span class="n">seeds</span><span class="p">,</span>
+    <span class="n">folder_name</span><span class="o">=</span><span class="n">folder</span>
+<span class="p">)</span>
+<span class="c1"># run experiments</span>
+<span class="n">manager</span><span class="o">.</span><span class="n">run_experiments</span><span class="p">(</span><span class="n">experiment_func</span><span class="o">=</span><span class="n">experiment_func</span><span class="p">)</span>
+</pre></div>
+</div>
 </section>
 </section>
 
@@ -366,6 +584,8 @@ Keras callbacks system.</p>
 <li><a class="reference internal" href="#">Quick Start</a><ul>
 <li><a class="reference internal" href="#training-basics">Training Basics</a></li>
 <li><a class="reference internal" href="#callbacks-system">Callbacks System</a></li>
+<li><a class="reference internal" href="#regularization">Regularization</a></li>
+<li><a class="reference internal" href="#running-multiple-experiments">Running multiple experiments</a></li>
 </ul>
 </li>
 </ul>
