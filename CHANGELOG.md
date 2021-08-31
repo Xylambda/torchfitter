@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## [3.1.0] - 2021-07-27
+
+### Fixed
+
+- Solve doc typos.
+- Fix logger and trainer tests.
+- Fix incomplete `quickstart` in docs.
+- Fix logging bug in `GPUStats` callback.
+
+### Added
+
+- Add support for mixed precision training.
+- Add ElasticNet regularization.
+- Add testing methods and their tests: `check_monotonically_decreasing` and `compute_forward_gradient`.
+- Add cuda seed setting in Manager.
+- Add option to only use deterministic algorithm in the Manager class.
+
+### Changed
+
+- Update logo and README.
+- Update tests with new testing methods.
+- Make some method on Trainer and Manager private.
+
 ## [3.0.0] - 2021-07-27
 
 ### Fixed

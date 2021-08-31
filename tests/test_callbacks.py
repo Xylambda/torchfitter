@@ -10,9 +10,12 @@ from torch.utils.data import DataLoader
 from torchfitter.trainer import Trainer
 from torchfitter.utils import DataWrapper
 from torchfitter.conventions import ParamsDict
-from torchfitter.testing import change_model_params
 from sklearn.model_selection import train_test_split
 from torchfitter.callbacks.base import CallbackHandler
+from torchfitter.testing import (
+    change_model_params, 
+    check_monotonically_decreasing
+)
 from torchfitter.callbacks import (
     EarlyStopping, 
     LoggerCallback,
@@ -142,9 +145,11 @@ def test_logger_callback(caplog, train_config):
     msg = "Logger not stating where the training is running."
     assert caplog.records[0].message.startswith("Starting training process"), msg
 
-    log_msg = "Epoch 1/10 | Train loss: 8444.36500 | Validation loss 8672.90403 | Time/epoch:"
+    log_msg = "Epoch 1/10 | "
     msg = "Logger not logging first epoch correctly"
     assert caplog.records[1].message.startswith(log_msg), msg
+    assert "| Validation loss" in caplog.records[1].message, msg
+    assert "| Time/epoch:" in caplog.records[1].message, msg
 
     msg = "Logger not logging end of training time"
     assert caplog.records[2].message.startswith("End of training. Total time: "), msg
@@ -182,39 +187,10 @@ def test_learning_rate_scheduler(train_config):
     )
 
     trainer.fit(train_loader, val_loader, epochs=25)
-
-    expected_lr = [
-        0.005,
-        0.005,
-        0.005,
-        0.005,
-        0.005,
-        0.005,
-        0.005,
-        0.005,
-        0.005,
-        0.005,
-        0.005,
-        0.005,
-        0.005,
-        0.005,
-        0.005,
-        0.005,
-        0.005,
-        0.005,
-        0.005,
-        0.005,
-        0.005,
-        0.005,
-        0.005,
-        0.005,
-        0.0045000000000000005
-    ]
-
     obtained_lr = trainer.internal_state.get_state_dict()['history']['learning_rate']
 
-    msg = "Error en LR values"
-    expected_lr == obtained_lr, msg
+    msg = "LR values are not monotonically decreasing."
+    assert check_monotonically_decreasing(obtained_lr), msg
 
 
 @pytest.mark.xfail
@@ -262,5 +238,3 @@ def test_callback_handler():
     # -------------------------------------------------------------------------
     callback = CallbackTester()
     handler = CallbackHandler([callback])
-
-    _dict = {'a': 'b'}

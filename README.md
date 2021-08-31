@@ -1,6 +1,6 @@
 
 <p align="center">
-  <img src="img/logo.png" width="320">
+  <img src="img/logo.png" width="650">
 </p>
 
 ![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/Xylambda/torchfitter?label=VERSION&style=badge)
@@ -9,17 +9,16 @@
 ![workflow](https://github.com/Xylambda/torchfitter/actions/workflows/cicd.yml/badge.svg)
 [![doc](https://img.shields.io/badge/DOCS-documentation-blue.svg?style=badge)](https://xylambda.github.io/torchfitter/)
 
-`torchfitter` is a simple library I created to ease the training of PyTorch
-models. It features a class called `Trainer` that includes the basic 
-functionality to fit models in a Keras-like style.
+`torchfitter` is a simple library to ease the training of PyTorch models. It 
+features a class called `Trainer` that includes the basic functionality to fit 
+models in a Keras-like style.
 
 The library also provides a callbacks API that can be used to interact with
 the model during the training process, as well as a set of basic regularization
 procedures.
 
 Additionally, you will find the `Manager` class which allows you to run 
-multiple experiments for different random seeds. The class is still in testing
-stage, so unexpected behaviour may occur when using it.
+multiple experiments for different random seeds.
 
 ## Installation
 **Normal user**
@@ -299,7 +298,6 @@ the trainer cares about the optimization process.
 Thank you! Do not hesitate to open an issue and I'll do my best to answer you.
 
 ## CREDITS
-* <div>Icons made by <a href="https://www.flaticon.com/authors/vignesh-oviyan" title="Vignesh Oviyan">Vignesh Oviyan</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></div>
 
 * [Keras API](https://keras.io/api/).
 

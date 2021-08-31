@@ -1,9 +1,12 @@
 """ Util functions for testing purposes. """
 import torch
 import torch.nn as nn
+from typing import Iterable
 
 
-def change_model_params(model, weights, biases):
+def change_model_params(
+    model: torch.nn.Module, weights: torch.Tensor, biases: torch.Tensor
+) -> None:
     """
     Change the model parameters. There is not need to return the model since
     the update will happen on the original object.
@@ -22,7 +25,7 @@ def change_model_params(model, weights, biases):
         model.bias = nn.Parameter(biases)
 
 
-def compute_forward_gradient(module, *tensors):
+def compute_forward_gradient(module: torch.nn.Module, *tensors) -> dict:
     """Computes forward gradient.
     
     This function helps to test the gradient computation of a nn.Module class.
@@ -60,7 +63,7 @@ def compute_forward_gradient(module, *tensors):
     forward = module(*tensors)
     
     # compute gradients
-    if forward.shape != torch.Size([1]):
+    if forward.shape != torch.Size([1]) and forward.shape != torch.Size([]):
         raise ValueError(
             "The passed tensors produced a vector result instead of a scalar "
             "result. It is not possible to compute the backward pass if the "
@@ -75,3 +78,37 @@ def compute_forward_gradient(module, *tensors):
         gradients[i] = t.grad
     
     return gradients
+
+
+def check_monotonically_decreasing(
+    iterable: Iterable, strict: bool=False
+) -> bool:
+    """Check if the given iterable is monotonically decreasing.
+
+    The function allows to check strictly (all i + 1 are greater than i) or 
+    non-strictly (all i + 1 are greater or equal than i).
+
+    Parameters
+    ----------
+    iterable : array-like
+        Iterable object to check.
+    strict : bool, optional, default: False
+        Whether to strictly check monotonically decreasing (True) or not 
+        (False).
+
+    Returns
+    -------
+    bool
+        True if 'iterable' is monotonically decreasing.
+
+    References
+    ----------
+    .. [1] Python - How to check list monotonicity
+       https://stackoverflow.com/questions/4983258/python-how-to-check-list-
+       monotonicity
+    """
+    _zip = zip(iterable, iterable[1:])
+    if strict:
+        return all(next_ > current for next_, current in _zip)
+    else:
+        return all(next_ >= current for next_, current in _zip)
