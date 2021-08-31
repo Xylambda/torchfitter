@@ -38,7 +38,8 @@ class Trainer:
         pass will be computed under the context of `torch.cuda.amp.autocast` 
         and the backpropagation and gradient descent steps will be computed 
         using `torch.cuda.amp.GradScaler`.
-        Callbacks that allow interaction.
+    callbacks : list of torchfitter.callback.Callback
+        Callbacks to use during the training process.
     metrics : list of torchmetrics.Metric, optional, default: None
         List of metrics to compute in the fitting process.
 
