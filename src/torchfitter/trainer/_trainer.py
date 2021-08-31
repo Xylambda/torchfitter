@@ -4,9 +4,8 @@ import logging
 import warnings
 import statistics
 import torchmetrics
-
-from tqdm.auto import tqdm
 from typing import List
+from tqdm.auto import tqdm
 from torchfitter.callbacks.base import CallbackHandler
 from torchfitter.conventions import ParamsDict, BarFormat
 from torchfitter.trainer._utils import TrainerInternalState, MetricsHandler
@@ -73,7 +72,7 @@ class Trainer:
         self.criterion = criterion
         self.optimizer = optimizer
         self.regularizer = regularizer
-        self.device = self._get_device(device)
+        self.device = self.__get_device(device)
         self.model = model.to(self.device)
         self.callbacks_list = callbacks
         self.metrics_list = metrics
@@ -246,9 +245,7 @@ class Trainer:
         )
 
         if reset_callbacks:
-            if self.callbacks_list is None:
-                pass
-            else:
+            if self.callbacks_list is not None:
                 for callback in self.callbacks_list:
                     callback.reset_parameters()
 
@@ -284,26 +281,16 @@ class Trainer:
             labels = labels.to(self.device)
             features = features.to(self.device)
             
-            # TODO: find cleaner way to do this
-            if self.mixed_precision:
-                with torch.cuda.amp.autocast():
-                    # forward pass and loss
-                    out = self.model(features)
-                    loss = self.compute_loss(out, labels)
-
-                # clean gradients, backpropagation and parameters update
-                self.optimizer.zero_grad()
-                self.__scaler.scale(loss).backward()
-                self.__scaler.step(self.optimizer)
-                self.__scaler.update()
-            else:
+            with torch.cuda.amp.autocast(enabled=self.mixed_precision):
+                # forward pass and loss
                 out = self.model(features)
                 loss = self.compute_loss(out, labels)
 
-                # clean gradients, backpropagation and parameters update
-                self.optimizer.zero_grad()
-                loss.backward()
-                self.optimizer.step()
+            # clean gradients, backpropagation and parameters update
+            self.optimizer.zero_grad()
+            self.__scaler.scale(loss).backward()
+            self.__scaler.step(self.optimizer)
+            self.__scaler.update()
 
             # compute metrics, needed for accumulated computation
             _ = self.metrics_handler.single_batch_computation(
@@ -351,8 +338,9 @@ class Trainer:
                 labels = labels.to(self.device)
                 features = features.to(self.device)
 
-                out = self.model(features)
-                loss = self.compute_loss(out, labels)
+                with torch.cuda.amp.autocast(enabled=self.mixed_precision):
+                    out = self.model(features)
+                    loss = self.compute_loss(out, labels)
 
                 # compute metrics, needed for accumulated computation
                 _ = self.metrics_handler.single_batch_computation(
@@ -416,7 +404,7 @@ class Trainer:
 
         return loss
 
-    def _get_device(self, device):
+    def __get_device(self, device):
         if device is None:
             dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             msg = f"Device was automatically selected: {dev}"

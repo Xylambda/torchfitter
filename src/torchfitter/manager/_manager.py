@@ -2,7 +2,6 @@
 import os
 import torch
 import random
-import logging
 import numpy as np
 from typing import Callable, Iterable
 
@@ -16,9 +15,15 @@ class Manager:
     seeds : iterable of ints
         Seeds to use in the experiments.
     """
-    def __init__(self, seeds: Iterable[int], folder_name: str):
+    def __init__(
+        self, 
+        seeds: Iterable[int], 
+        folder_name: str, 
+        deterministic: bool=False
+    ):
         self.seeds = seeds
         self.folder_name = folder_name
+        self.deterministic = deterministic
 
         if str(self.folder_name) not in os.listdir():
             os.mkdir(self.folder_name)
@@ -39,10 +44,12 @@ class Manager:
             Experiment function.
         """
         for seed in self.seeds:
-            self._set_seed(seed=seed)
+            self.__set_seed(seed=seed)
             experiment_func(seed=seed, folder_name=self.folder_name)
 
-    def _set_seed(self, seed: int) -> None:
+    def __set_seed(self, seed: int) -> None:
         random.seed(seed)
         np.random.seed(seed)
         torch.manual_seed(seed)
+        torch.cuda.manual_seed(seed)
+        torch.use_deterministic_algorithms(self.deterministic)

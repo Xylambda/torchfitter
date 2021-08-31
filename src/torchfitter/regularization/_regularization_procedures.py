@@ -84,7 +84,7 @@ class L2Regularization(RegularizerBase):
 
 
 class ElasticNetRegularization(RegularizerBase):
-    """Linear combination of L1 and L2.
+    r"""Linear combination of L1 and L2.
 
     According to [1], the lasso penalty is somewhat indifferent to the choice 
     among a set of strong but correlated variables. The ridge penalty, on the 
@@ -93,7 +93,7 @@ class ElasticNetRegularization(RegularizerBase):
 
     .. math::
 
-        \sum_{j=1}^{p} \left( \alpha |\beta_{j}| + (1 + \alpha) \beta_{j}^{2} \right)
+        \sum_{j=1}^{p} ( \alpha |\beta_{j}| + (1 + \alpha) \beta_{j}^{2} )
 
     Parameters
     ----------

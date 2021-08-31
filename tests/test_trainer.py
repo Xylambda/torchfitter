@@ -82,6 +82,7 @@ def test_trainer(train_config):
         criterion=criterion,
         optimizer=optimizer,
         device=device,
+        mixed_precision=False
     )
     
     # fitting process

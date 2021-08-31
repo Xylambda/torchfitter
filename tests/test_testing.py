@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-
 from torchfitter.testing import (
     change_model_params,
     compute_forward_gradient,
