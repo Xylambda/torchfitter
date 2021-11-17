@@ -14,6 +14,9 @@ from torchfitter.trainer._utils import TrainerInternalState, MetricsHandler
 
 class Trainer:
     """Class that eases the training of a PyTorch model.
+
+    This class leverages the power of 'accelerate' to handle the device 
+    management and the model optimization.
     
     The trainer tracks its state using a 
     'torchfitter.trainer.TrainerInternalState' object. You can also pass a list
@@ -42,6 +45,14 @@ class Trainer:
         List of metrics to compute in the fitting process.
     accelerator : accelerate.Accelerator
         Accelerator object from 'accelerate'.
+    gradient_clipping : str or None, optional, {None, 'norm', 'value'}
+        Norm gradient clipping of value gradient clipping. If None, gradient
+        clipping won't be applied.
+    gradient_clipping_kwrgs : dict, optional, default: None
+        Dictionary containing keyword arguments for gradient clipping 
+        algorithm. Example: {max_norm=1, norm_type=2}. See 
+        https://huggingface.co/docs/accelerate/accelerator.html for more 
+        information.
     log_level : int, optional, default: logging.INFO
         Logging level.
 
@@ -53,12 +64,9 @@ class Trainer:
         Trainer internal parameters state.
     metrics_handler : torchfitter.trainer.MetricsHandler
         Handles the passed metrics.
+    gradient_clipping_algo_ : callable
+        Gradient clipping algorithm or None
 
-    Warning
-    -------
-    The trainer class will automatically select the device if is None, which 
-    will may cause problems when tensors and/or modules are on different 
-    devices.
     """
 
     def __init__(
@@ -70,13 +78,17 @@ class Trainer:
         mixed_precision: bool=False,
         callbacks: list=None,
         metrics: List[torchmetrics.Metric]=None,
-        accelerator=None,
-        log_level=logging.INFO
+        accelerator: Accelerator=None,
+        gradient_clipping: str=None,
+        gradient_clipping_kwrgs: dict=None,
+        log_level: int=logging.INFO
     ):
         self.criterion = criterion
         self.regularizer = regularizer
         self.callbacks_list = callbacks
         self.metrics_list = metrics
+        self.gradient_clipping = gradient_clipping
+        self.gradient_clipping_kwrgs = gradient_clipping_kwrgs
         self.log_level = log_level
 
         if accelerator is None:
@@ -86,7 +98,7 @@ class Trainer:
         self.optimizer = self.accelerator.prepare_optimizer(optimizer)
         self.model = self.accelerator.prepare_model(model)
 
-        # attributes
+        # ----- attributes -----
         self.internal_state = TrainerInternalState(
             model=self.model, device=self.accelerator.device
         )
@@ -94,9 +106,10 @@ class Trainer:
             callbacks_list=self.callbacks_list
         )
         self.metrics_handler = MetricsHandler(metrics_list=self.metrics_list)
+        self.gradient_clipping_algo_ = self._prepare_gradient_clipping()
         self.__bar_format = BarFormat.FORMAT
 
-        if self.metrics_handler.metric_names is not None:
+        if self.metrics_handler.metric_names is not None: # TODO: do this inside MetricsHandler
             names = self.metrics_handler.metric_names
             self.internal_state.add_metrics(*names)
  
@@ -122,7 +135,7 @@ class Trainer:
         epochs : int
             Number of training epochs.
         disable_pbar : bool, optional, default: False
-            If True, the progress bar will be disabled.
+            If True, the TQDM progress bar will be disabled.
 
         """
         initial_epoch = self.internal_state.get_single_param(
@@ -141,7 +154,7 @@ class Trainer:
 
         # ---- fitting process ----
         epoch = initial_epoch
-        stop = self.internal_state.get_single_param(key=ParamsDict.STOP_TRAINING)
+        stop = False
         while epoch <= epochs and not stop:
             with tqdm(
                 range(1, n_iter+1),
@@ -154,26 +167,37 @@ class Trainer:
                 pbar.set_description(f"Epoch: {epoch}/{epochs}")
                 
                 self.internal_state.update_params(**{ParamsDict.PROG_BAR: pbar})
-                self.callback_handler.on_epoch_start(self.internal_state.get_state_dict())
+                self.callback_handler.on_epoch_start(
+                    self.internal_state.get_state_dict()
+                )
 
                 # track epoch time
                 epoch_start_time = time.time()
 
-                # train
-                self.callback_handler.on_train_step_start(self.internal_state.get_state_dict())
-                tr_loss = self.train_step(train_loader)
-                self.callback_handler.on_train_step_end(self.internal_state.get_state_dict())
+                # train step
+                self.callback_handler.on_train_step_start(
+                    self.internal_state.get_state_dict()
+                )
+                tr_loss = self.train_step(train_loader) # actual step
+                self.callback_handler.on_train_step_end(
+                    self.internal_state.get_state_dict()
+                )
 
-                # validation
-                self.callback_handler.on_validation_step_start(self.internal_state.get_state_dict())
+                # validation step
+                self.callback_handler.on_validation_step_start(
+                    self.internal_state.get_state_dict()
+                )
                 val_loss = self.validation_step(val_loader)
-                self.callback_handler.on_validation_step_end(self.internal_state.get_state_dict())
+                self.callback_handler.on_validation_step_end(
+                    self.internal_state.get_state_dict()
+                )
 
                 self.internal_state.update_history(
                     **{
                         ParamsDict.HISTORY_TRAIN_LOSS: tr_loss,
                         ParamsDict.HISTORY_VAL_LOSS: val_loss,
-                        ParamsDict.HISTORY_LR: self.optimizer.param_groups[0]["lr"],
+                        ParamsDict.HISTORY_LR: 
+                            self.optimizer.param_groups[0]["lr"],
                     }
                 )
 
@@ -188,10 +212,14 @@ class Trainer:
                     }
                 )
 
-                self.callback_handler.on_epoch_end(self.internal_state.__dict__)
+                self.callback_handler.on_epoch_end(
+                    self.internal_state.get_state_dict()
+                )
                 
                 epoch += 1
-                stop = self.internal_state.get_single_param(key=ParamsDict.STOP_TRAINING)
+                stop = self.internal_state.get_single_param(
+                    key=ParamsDict.STOP_TRAINING
+                )
 
                 if not disable_pbar:
                     pbar.reset() # DISC: pbar.close() ??
@@ -199,7 +227,29 @@ class Trainer:
         total_time = time.time() - total_start_time
 
         self.internal_state.update_params(**{ParamsDict.TOTAL_TIME: total_time})
-        self.callback_handler.on_fit_end(self.internal_state.__dict__)
+        self.callback_handler.on_fit_end(self.internal_state.get_state_dict())
+
+    def _prepare_gradient_clipping(self):
+        """
+        Identify the gradient clipping algorithm to use.
+
+        Returns
+        -------
+        algo : callable
+            Callable function that wraps the gradient clipping funcionality.
+        """
+        if self.gradient_clipping == 'value':
+            algo = self.accelerator.clip_grad_value_
+        elif self.gradient_clipping == 'norm':
+            algo = self.accelerator.clip_grad_norm_
+        elif self.gradient_clipping is None:
+            algo = None
+        else:
+            raise ValueError(
+                "Not supported gradient "
+                f"clipping algorithm: '{self.gradient_clipping}'"
+            )
+        return algo
 
     def set_bar_format(self, fmt: str) -> None:
         """
@@ -327,8 +377,16 @@ class Trainer:
         out = self.model(features)
         loss = self.compute_loss(out, labels)
 
-        # clean gradients, backpropagation and parameters update
+        # backpropagation
         self.accelerator.backward(loss)
+
+        # gradient clipping
+        if self.gradient_clipping_algo_ is not None:
+            self.gradient_clipping_algo_(
+                self.model.parameters(), **self.gradient_clipping_kwrgs
+            )
+        
+        #parameters update
         self.optimizer.step()
 
         # compute metrics, needed for accumulated computation
@@ -447,3 +505,21 @@ class Trainer:
             loss += penalty.item()
 
         return loss
+
+    def save_model(self, path):
+        """
+        Convenient method to save the model ensuring the model is unwrapped and
+        all processes are done.
+
+        Parameters
+        ----------
+        path : path-like
+            Path to save the model
+        """
+        self.accelerator.wait_for_everyone()
+        unwrapped_model = self.accelerator.unwrap_model(self.model)
+        self.accelerator.save(unwrapped_model.state_dict(), path)
+
+    def load_model(self, path):
+        unwrapped_model = self.accelerator.unwrap_model(self.model)
+        unwrapped_model.load_state_dict(torch.load(path))
