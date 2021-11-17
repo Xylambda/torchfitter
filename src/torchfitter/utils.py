@@ -1,6 +1,7 @@
 """ Utils functions. """
 
 import torch
+import logging
 import numpy as np
 from typing import Tuple, Union
 from torch.utils.data import Dataset
@@ -165,3 +166,24 @@ class FastTensorDataLoader:
 
     def __len__(self) -> int:
         return self.n_batches
+
+
+def get_logger(name: str, level: int) -> logging.Logger:
+    """
+    Generate a logger with the specified name and level.
+
+    Parameters
+    ----------
+    name : str
+        Logger name.
+    level : int
+        Logging level for the logger.
+
+    Returns
+    -------
+    logger : logging.Logger
+        Logger.
+    """
+    logger = logging.getLogger(name=name)
+    logger.setLevel(level=level)
+    return logger

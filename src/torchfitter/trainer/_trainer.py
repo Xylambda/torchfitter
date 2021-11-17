@@ -4,8 +4,9 @@ import logging
 import warnings
 import statistics
 import torchmetrics
-from typing import List
 from tqdm.auto import tqdm
+from typing import List, Tuple
+from accelerate import Accelerator
 from torchfitter.callbacks.base import CallbackHandler
 from torchfitter.conventions import ParamsDict, BarFormat
 from torchfitter.trainer._utils import TrainerInternalState, MetricsHandler
@@ -30,9 +31,6 @@ class Trainer:
         Optimizer to perform the parameters update.
     regularizer : torchfitter.regularizer, optional, default: None
         Procedure to apply penalties to the loss function.
-    device : str, optional, default: None
-        Device to perform computations. If None, the Trainer will automatically
-        select the device.
     mixed_precision : bool, optional, default: False
         Whether to use mixed precision training or not. If True, the forward 
         pass will be computed under the context of `torch.cuda.amp.autocast` 
@@ -42,6 +40,10 @@ class Trainer:
         Callbacks to use during the training process.
     metrics : list of torchmetrics.Metric, optional, default: None
         List of metrics to compute in the fitting process.
+    accelerator : accelerate.Accelerator
+        Accelerator object from 'accelerate'.
+    log_level : int, optional, default: logging.INFO
+        Logging level.
 
     Attributes
     ----------
@@ -65,37 +67,39 @@ class Trainer:
         criterion: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
         regularizer=None,
-        device=None,
         mixed_precision: bool=False,
         callbacks: list=None,
-        metrics: List[torchmetrics.Metric]=None
+        metrics: List[torchmetrics.Metric]=None,
+        accelerator=None,
+        log_level=logging.INFO
     ):
         self.criterion = criterion
-        self.optimizer = optimizer
         self.regularizer = regularizer
-        self.device = self.__get_device(device)
-        self.model = model.to(self.device)
         self.callbacks_list = callbacks
         self.metrics_list = metrics
-        self.mixed_precision = mixed_precision
+        self.log_level = log_level
+
+        if accelerator is None:
+            self.accelerator = Accelerator(fp16=mixed_precision)
+
+        # wrap withing accelerate environment
+        self.optimizer = self.accelerator.prepare_optimizer(optimizer)
+        self.model = self.accelerator.prepare_model(model)
 
         # attributes
         self.internal_state = TrainerInternalState(
-            model=self.model, device=self.device
+            model=self.model, device=self.accelerator.device
         )
         self.callback_handler = CallbackHandler(
             callbacks_list=self.callbacks_list
         )
         self.metrics_handler = MetricsHandler(metrics_list=self.metrics_list)
         self.__bar_format = BarFormat.FORMAT
-        self.__scaler = torch.cuda.amp.GradScaler(enabled=self.mixed_precision)
-
-        logging.basicConfig(level=logging.INFO)
 
         if self.metrics_handler.metric_names is not None:
             names = self.metrics_handler.metric_names
             self.internal_state.add_metrics(*names)
-
+ 
     def fit(
         self,
         train_loader: torch.utils.data.dataloader.DataLoader,
@@ -125,6 +129,10 @@ class Trainer:
             key=ParamsDict.EPOCH_NUMBER
         )
         n_iter = len(train_loader) + len(val_loader)
+
+        # wrap loaders within accelerate environment
+        train_loader = self.accelerator.prepare_data_loader(train_loader)
+        val_loader = self.accelerator.prepare_data_loader(val_loader)
 
         # track total training time
         total_start_time = time.time()
@@ -226,7 +234,7 @@ class Trainer:
         scaler : torch.cuda.amp.grad_scaler.GradScaler
             The gradient scaler you want to use.
         """
-        self.__scaler = scaler
+        self.accelerator.scaler = scaler
 
     def reset_parameters(
         self, reset_callbacks=False, reset_model=False
@@ -277,27 +285,8 @@ class Trainer:
         self.model.train()
 
         losses = []  # loss as mean of batch losses
-        for features, labels in loader:
-
-            labels = labels.to(self.device)
-            features = features.to(self.device)
-            
-            with torch.cuda.amp.autocast(enabled=self.mixed_precision):
-                # forward pass and loss
-                out = self.model(features)
-                loss = self.compute_loss(out, labels)
-
-            # clean gradients, backpropagation and parameters update
-            self.optimizer.zero_grad()
-            self.__scaler.scale(loss).backward()
-            self.__scaler.step(self.optimizer)
-            self.__scaler.update()
-
-            # compute metrics, needed for accumulated computation
-            _ = self.metrics_handler.single_batch_computation(
-                predictions=out, target=labels
-            )
-
+        for batch in loader:
+            loss = self.batch_train_step(batch=batch)
             losses.append(loss.item())
             self.internal_state.update_progress_bar(n=1)
 
@@ -305,12 +294,48 @@ class Trainer:
         metrics_accumulated = self.metrics_handler.accumulated_batch_computation()
         
         if metrics_accumulated is not None:
-            self.internal_state.update_metrics(is_train=True, **metrics_accumulated)
+            self.internal_state.update_metrics(
+                is_train=True, **metrics_accumulated
+            )
 
         # reset metrics
         self.metrics_handler.reset_metrics()
-
         return statistics.mean(losses)
+
+    def batch_train_step(
+        self, batch: Tuple[torch.Tensor, torch.Tensor]
+    ) -> torch.Tensor:
+        """
+        Define the computations to perform on each batch for the training loop.
+
+        Parameters
+        ----------
+        batch : tuple
+            Batch to process.
+
+        Returns
+        -------
+        loss : torch.Tensor
+            Train loss graph.
+        """
+        features, labels = batch
+
+        # remove grad from pervious pass
+        self.optimizer.zero_grad()
+
+        # forward propagation
+        out = self.model(features)
+        loss = self.compute_loss(out, labels)
+
+        # clean gradients, backpropagation and parameters update
+        self.accelerator.backward(loss)
+        self.optimizer.step()
+
+        # compute metrics, needed for accumulated computation
+        _ = self.metrics_handler.single_batch_computation(
+            predictions=out, target=labels
+        )
+        return loss
 
     def validation_step(
         self, loader: torch.utils.data.dataloader.DataLoader
@@ -334,20 +359,8 @@ class Trainer:
 
         losses = []  # loss as mean of batch losses
         with torch.no_grad():
-            for features, labels in loader:
-                # will be used multiple times
-                labels = labels.to(self.device)
-                features = features.to(self.device)
-
-                with torch.cuda.amp.autocast(enabled=self.mixed_precision):
-                    out = self.model(features)
-                    loss = self.compute_loss(out, labels)
-
-                # compute metrics, needed for accumulated computation
-                _ = self.metrics_handler.single_batch_computation(
-                    predictions=out, target=labels
-                )
-
+            for batch in loader:
+                loss = self.batch_validation_step(batch=batch)
                 losses.append(loss.item())
                 self.internal_state.update_progress_bar(n=1)
 
@@ -355,12 +368,42 @@ class Trainer:
             metrics_accumulated = self.metrics_handler.accumulated_batch_computation()
             
             if metrics_accumulated is not None:
-                self.internal_state.update_metrics(is_train=False, **metrics_accumulated)
+                self.internal_state.update_metrics(
+                    is_train=False, **metrics_accumulated
+                )
 
             # reset metrics
             self.metrics_handler.reset_metrics()
 
         return statistics.mean(losses)
+
+    def batch_validation_step(
+        self, batch: Tuple[torch.Tensor, torch.Tensor]
+    ) -> torch.Tensor:
+        """
+        Define the computations to perform on each batch for the validation 
+        loop.
+
+        Parameters
+        ----------
+        batch : tuple
+            Batch to process.
+
+        Returns
+        -------
+        loss : torch.Tensor
+            Validation loss graph.
+        """
+        features, labels = batch
+
+        out = self.model(features)
+        loss = self.compute_loss(out, labels)
+
+        # compute metrics, needed for accumulated computation
+        _ = self.metrics_handler.single_batch_computation(
+            predictions=out, target=labels
+        )
+        return loss
 
     def compute_loss(
         self, real: torch.Tensor, target: torch.Tensor
@@ -392,25 +435,15 @@ class Trainer:
             loss = self.criterion(real, target.long())
             msg = (
                 f"""Target tensor has been casted from"""
-                """{target.dtype} to 'long' dtype to avoid errors."""
+                f"""{target.dtype} to 'long' dtype to avoid errors."""
             )
             warnings.warn(msg)
 
         # apply regularization if any
         if self.regularizer is not None:
             penalty = self.regularizer(
-                self.model.named_parameters(), self.device
+                self.model.named_parameters(), self.accelerator.device
             )
             loss += penalty.item()
 
         return loss
-
-    def __get_device(self, device):
-        if device is None:
-            dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            msg = f"Device was automatically selected: {dev}"
-            warnings.warn(msg)
-        else:
-            dev = device
-
-        return dev

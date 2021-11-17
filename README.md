@@ -65,13 +65,7 @@ from torchfitter.callbacks import (
     LearningRateScheduler
 )
 
-
-# get device
-device = "cuda" if torch.cuda.is_available() else "cpu"
-
 model = nn.Linear(in_features=1, out_features=1)
-model.to(device) # do this before declaring the optimizer
-
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters())
 regularizer = L1Regularization(regularization_rate=0.01, biases=False)
@@ -88,11 +82,26 @@ trainer = Trainer(
     criterion=criterion,
     optimizer=optimizer, 
     regularizer=regularizer,
-    device=device,
     callbacks=[logger, early_stopping, scheduler]
 )
 
 trainer.fit(train_loader, val_loader, epochs=1000)
+```
+
+Since `torchfitter` leverages the power of `accelerate`, the device management
+will rely on the latter though you can set the `accelerate.Accelerator` 
+object to perform minor changes:
+
+```python
+from accelerate import Accelerator
+from torchfitter.trainer import Trainer
+
+
+accelerator = Accelerator(...)
+trainer = Trainer(
+    **kwargs,
+    accelerator=accelerator
+)
 ```
 
 
@@ -275,11 +284,10 @@ class MyTrainer(Trainer):
 ```
 
 ## FAQ
-* **Do you know Pytorch-Lightning?**
+* **Do you know Pytorch-Lightning/FastAI?**
 
-I know it and I think **it is awesome**. This is a personal project. I wouln't
-hesitate to use [Pytorch-Lightning](https://www.pytorchlightning.ai/) for more 
-complex tasks, like distributed training on multiple GPUs.
+I know them and I think **they are awesome**. This is a personal project though
+I must say the trainer is reasonably well-equiped.
 
 * **Why is the `validation loader` not optional?**
 

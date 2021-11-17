@@ -31,8 +31,6 @@ def train_config():
         weights=torch.Tensor([[-0.065]]), 
         biases=torch.Tensor([0.5634])
     )
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    model.to(device)
     
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters())
@@ -63,7 +61,7 @@ def train_config():
     train_loader = DataLoader(train_wrapper, batch_size=32)
     val_loader = DataLoader(val_wrapper, batch_size=32)
 
-    return train_loader, val_loader, model, criterion, optimizer, device
+    return train_loader, val_loader, model, criterion, optimizer
 
 
 def test_trainer(train_config):
@@ -74,14 +72,12 @@ def test_trainer(train_config):
         model,
         criterion,
         optimizer,
-        device
     ) = train_config
 
     trainer = Trainer(
         model=model,
         criterion=criterion,
         optimizer=optimizer,
-        device=device,
         mixed_precision=False
     )
     
@@ -110,14 +106,12 @@ def test_trainer_mixed_precision(train_config):
         model,
         criterion,
         optimizer,
-        device
     ) = train_config
 
     trainer = Trainer(
         model=model,
         criterion=criterion,
         optimizer=optimizer,
-        device=device,
         mixed_precision=True
     )
     

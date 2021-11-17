@@ -25,5 +25,6 @@ setup(
         "numpy",
         "torchmetrics",
         "torch>=1.1.0",
+        "accelerate"
     ],
 )
