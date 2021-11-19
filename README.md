@@ -13,6 +13,9 @@
 features a class called `Trainer` that includes the basic functionality to fit 
 models in a Keras-like style.
 
+Internally, `torchfitter` leverages the power of [accelerate](https://huggingface.co/docs/accelerate/)
+to handle the device management.
+
 The library also provides a callbacks API that can be used to interact with
 the model during the training process, as well as a set of basic regularization
 procedures.
@@ -39,6 +42,20 @@ To run the tests you must install the library as a `developer`.
 cd torchfitter/
 pytest -v tests/
 ```
+
+## Features
+
+|                          | Supported | Not supported | Planned |
+|--------------------------|-----------|---------------|---------|
+|      Basic training loop |     x     |               |         |
+|        Gradient Clipping |     x     |               |         |
+|    Gradient Accumulation |     x     |               |         |
+|     Multi-device support |     x     |               |         |
+|           Regularization |     x     |               |         |
+|  In-loop metrics support |     x     |               |         |
+| Mixed precision training |     x     |               |         |
+|         Callbacks System |     x     |               |         |
+|    Hyperparameter search |           |       x       |         |
 
 ## Usage
 Assume we already have `DataLoaders` for the train and validation sets. 
@@ -90,7 +107,7 @@ trainer.fit(train_loader, val_loader, epochs=1000)
 
 Since `torchfitter` leverages the power of `accelerate`, the device management
 will rely on the latter though you can set the `accelerate.Accelerator` 
-object to perform minor changes:
+object to control its parameters:
 
 ```python
 from accelerate import Accelerator
@@ -198,6 +215,7 @@ of the conventions:
  ('STOP_TRAINING', 'stop_training'),
  ('DEVICE', 'device'),
  ('MODEL', 'model'),
+ ('ACCELERATOR', 'accelerator'),
  ('HISTORY', 'history'),
  ('HISTORY_TRAIN_LOSS', 'train_loss'),
  ('HISTORY_VAL_LOSS', 'validation_loss'),
@@ -233,6 +251,8 @@ parameters:
         Device where the model and data are stored.
     MODEL : str
         The model to train.
+    ACCELERATOR : str
+        The accelerate.Accelerator object used to boost the training process.
     HISTORY : str
         Dictionary containing the metrics:
         * ParamsDict.HISTORY_TRAIN_LOSS
@@ -312,3 +332,16 @@ Thank you! Do not hesitate to open an issue and I'll do my best to answer you.
 * [torchmetrics](https://torchmetrics.readthedocs.io/en/latest/)
 
 * [fastai](https://docs.fast.ai/)
+
+
+## Cite
+If you've used this library for your projects please cite it:
+
+```latex
+@misc{alejandro2019torchfitter,
+  title={torchfitter - Simple Trainer to Optimize PyTorch Models},
+  author={Alejandro Pérez-Sanjuán},
+  year={2020},
+  howpublished={\url{https://github.com/Xylambda/torchfitter}},
+}
+```

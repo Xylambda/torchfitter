@@ -25,6 +25,8 @@ class ParamsDict:
         Device where the model and data are stored.
     MODEL : str
         The model to train.
+    ACCELERATOR : str
+        The accelerate.Accelerator object used to boost the training process.
     HISTORY : str
         Dictionary containing the metrics:
         * ParamsDict.HISTORY_TRAIN_LOSS
@@ -48,6 +50,7 @@ class ParamsDict:
     STOP_TRAINING = "stop_training"
     DEVICE = "device"
     MODEL = "model"
+    ACCELERATOR = "accelerator"
     HISTORY = "history"
     HISTORY_TRAIN_LOSS = "train_loss"
     HISTORY_VAL_LOSS = "validation_loss"

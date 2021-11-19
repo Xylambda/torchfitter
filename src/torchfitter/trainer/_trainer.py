@@ -45,6 +45,8 @@ class Trainer:
         List of metrics to compute in the fitting process.
     accelerator : accelerate.Accelerator
         Accelerator object from 'accelerate'.
+    accumulate_iter : int, optional, default: 1
+        Accumulate gradients every 'accumulate_iter' iterations.
     gradient_clipping : str or None, optional, {None, 'norm', 'value'}
         Norm gradient clipping of value gradient clipping. If None, gradient
         clipping won't be applied.
@@ -79,6 +81,7 @@ class Trainer:
         callbacks: list=None,
         metrics: List[torchmetrics.Metric]=None,
         accelerator: Accelerator=None,
+        accumulate_iter: int=1,
         gradient_clipping: str=None,
         gradient_clipping_kwrgs: dict=None,
         log_level: int=logging.INFO
@@ -87,6 +90,7 @@ class Trainer:
         self.regularizer = regularizer
         self.callbacks_list = callbacks
         self.metrics_list = metrics
+        self.accumulate_iter = accumulate_iter
         self.gradient_clipping = gradient_clipping
         self.gradient_clipping_kwrgs = gradient_clipping_kwrgs
         self.log_level = log_level
@@ -100,7 +104,7 @@ class Trainer:
 
         # ----- attributes -----
         self.internal_state = TrainerInternalState(
-            model=self.model, device=self.accelerator.device
+            model=self.model, accelerator=self.accelerator
         )
         self.callback_handler = CallbackHandler(
             callbacks_list=self.callbacks_list
@@ -247,7 +251,7 @@ class Trainer:
         else:
             raise ValueError(
                 "Not supported gradient "
-                f"clipping algorithm: '{self.gradient_clipping}'"
+                f"gradient clipping algorithm: '{self.gradient_clipping}'"
             )
         return algo
 
@@ -273,11 +277,10 @@ class Trainer:
     ) -> None:
         """Set the gradient scaler used in mixed precision.
 
-        The trainer creates a gradient scaler by default with the default 
-        values for the constructor arguments except 'enabled', which will be 
-        set the same as 'mixed_precision' variable value. With this function 
-        you can set the scaler to be an instance with the desired argument 
-        values.
+        Since the trainer relies on accelerate.Accelator class for the fitting
+        process the scaler is created inside the aforementioned. With this 
+        function you can set the scaler to be an instance with the desired 
+        argument values.
 
         Parameters
         ----------
@@ -335,8 +338,8 @@ class Trainer:
         self.model.train()
 
         losses = []  # loss as mean of batch losses
-        for batch in loader:
-            loss = self.batch_train_step(batch=batch)
+        for batch_idx, batch in enumerate(loader):
+            loss = self.batch_train_step(batch_index=batch_idx, batch=batch)
             losses.append(loss.item())
             self.internal_state.update_progress_bar(n=1)
 
@@ -353,13 +356,15 @@ class Trainer:
         return statistics.mean(losses)
 
     def batch_train_step(
-        self, batch: Tuple[torch.Tensor, torch.Tensor]
+        self, batch_index, batch: Tuple[torch.Tensor, torch.Tensor]
     ) -> torch.Tensor:
         """
         Define the computations to perform on each batch for the training loop.
 
         Parameters
         ----------
+        batch_index : int
+            Batch index.
         batch : tuple
             Batch to process.
 
@@ -370,12 +375,9 @@ class Trainer:
         """
         features, labels = batch
 
-        # remove grad from pervious pass
-        self.optimizer.zero_grad()
-
         # forward propagation
         out = self.model(features)
-        loss = self.compute_loss(out, labels)
+        loss = self.compute_loss(out, labels) / self.accumulate_iter
 
         # backpropagation
         self.accelerator.backward(loss)
@@ -386,8 +388,11 @@ class Trainer:
                 self.model.parameters(), **self.gradient_clipping_kwrgs
             )
         
-        #parameters update
-        self.optimizer.step()
+        # gradient accumulation logic
+        if (batch_index + 1) % self.accumulate_iter == 0: # or batch_index + 1 == len(loader)
+            # update parameters and remove gradient
+            self.optimizer.step()
+            self.optimizer.zero_grad()
 
         # compute metrics, needed for accumulated computation
         _ = self.metrics_handler.single_batch_computation(
@@ -417,8 +422,10 @@ class Trainer:
 
         losses = []  # loss as mean of batch losses
         with torch.no_grad():
-            for batch in loader:
-                loss = self.batch_validation_step(batch=batch)
+            for batch_idx, batch in enumerate(loader):
+                loss = self.batch_validation_step(
+                    batch_index=batch_idx, batch=batch
+                )
                 losses.append(loss.item())
                 self.internal_state.update_progress_bar(n=1)
 
@@ -436,7 +443,7 @@ class Trainer:
         return statistics.mean(losses)
 
     def batch_validation_step(
-        self, batch: Tuple[torch.Tensor, torch.Tensor]
+        self, batch_index, batch: Tuple[torch.Tensor, torch.Tensor]
     ) -> torch.Tensor:
         """
         Define the computations to perform on each batch for the validation 
@@ -444,6 +451,8 @@ class Trainer:
 
         Parameters
         ----------
+        batch_index : int
+            Batch index.
         batch : tuple
             Batch to process.
 
@@ -514,12 +523,21 @@ class Trainer:
         Parameters
         ----------
         path : path-like
-            Path to save the model
+            Path to save the model.
         """
         self.accelerator.wait_for_everyone()
         unwrapped_model = self.accelerator.unwrap_model(self.model)
         self.accelerator.save(unwrapped_model.state_dict(), path)
 
     def load_model(self, path):
+        """
+        Convenient method to load the model ensuring the model is unwrapped.
+
+        Parameters
+        ----------
+        path : path-like
+            Path to load the model from.
+        """
         unwrapped_model = self.accelerator.unwrap_model(self.model)
         unwrapped_model.load_state_dict(torch.load(path))
+        self.model = unwrapped_model

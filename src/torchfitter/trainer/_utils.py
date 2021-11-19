@@ -14,8 +14,8 @@ class TrainerInternalState:
     ----------
     model : torch.nn.Module
         The model to train.
-    device : str
-        Device where the model and data are stored.
+    accelerator : accelerate.Accelerator
+        Accelerator object.
 
     Attributes
     ----------
@@ -47,12 +47,14 @@ class TrainerInternalState:
     progress_bar : tqdm.tqdm
         Progress bar from tqdm library.
     """
-    def __init__(self, model, device) -> None:
-        self.model = model
-        self.device = device
-        self.___initialize_dict(model=model, device=device)
+    def __init__(self, model, accelerator) -> None:
+        self.___initialize_dict(model=model, accelerator=accelerator)
     
-    def ___initialize_dict(self, model, device):
+    def ___initialize_dict(self, model, accelerator):
+        """
+        Helper function that initializes all attributes.
+        """
+        # https://stackoverflow.com/questions/1639174/creating-class-instance-properties-from-a-dictionary
         self.training_loss = float('inf')
         self.validation_loss = float('inf')
         self.epoch_time = 0
@@ -60,7 +62,8 @@ class TrainerInternalState:
         self.total_epochs = None
         self.total_time = 0
         self.stop_training = False
-        self.device = device
+        self.accelerator = accelerator
+        self.device = accelerator.device
         self.model = model
         self.progress_bar = None
         self.history = {
