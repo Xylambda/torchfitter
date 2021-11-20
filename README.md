@@ -298,6 +298,9 @@ class MyTrainer(Trainer):
         # ...
         return loss # must be a number
 
+    def loss_step(self, real, target):
+        pass
+
     def compute_loss(self, real, target):
         # ...
         return loss # loss graph

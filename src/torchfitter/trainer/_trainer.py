@@ -152,7 +152,7 @@ class Trainer:
         val_loader = self.accelerator.prepare_data_loader(val_loader)
 
         # track total training time
-        total_start_time = time.time()
+        total_start_time = time.perf_counter()
 
         self.callback_handler.on_fit_start(self.internal_state.get_state_dict())
 
@@ -176,7 +176,7 @@ class Trainer:
                 )
 
                 # track epoch time
-                epoch_start_time = time.time()
+                epoch_start_time = time.perf_counter()
 
                 # train step
                 self.callback_handler.on_train_step_start(
@@ -205,7 +205,7 @@ class Trainer:
                     }
                 )
 
-                epoch_time = time.time() - epoch_start_time
+                epoch_time = time.perf_counter() - epoch_start_time
                 self.internal_state.update_params(
                     **{
                         ParamsDict.VAL_LOSS: val_loss,
@@ -228,7 +228,7 @@ class Trainer:
                 if not disable_pbar:
                     pbar.reset() # DISC: pbar.close() ??
 
-        total_time = time.time() - total_start_time
+        total_time = time.perf_counter() - total_start_time
 
         self.internal_state.update_params(**{ParamsDict.TOTAL_TIME: total_time})
         self.callback_handler.on_fit_end(self.internal_state.get_state_dict())
@@ -336,10 +336,13 @@ class Trainer:
             Mean loss of the batch.
         """
         self.model.train()
+        loader_len = len(loader) # used for gradient accumulation
 
         losses = []  # loss as mean of batch losses
         for batch_idx, batch in enumerate(loader):
-            loss = self.batch_train_step(batch_index=batch_idx, batch=batch)
+            loss = self.batch_train_step(
+                batch_index=batch_idx, batch=batch, loader_len=loader_len
+            )
             losses.append(loss.item())
             self.internal_state.update_progress_bar(n=1)
 
@@ -356,7 +359,10 @@ class Trainer:
         return statistics.mean(losses)
 
     def batch_train_step(
-        self, batch_index, batch: Tuple[torch.Tensor, torch.Tensor]
+        self,
+        batch_index,
+        batch: Tuple[torch.Tensor, torch.Tensor],
+        loader_len: int
     ) -> torch.Tensor:
         """
         Define the computations to perform on each batch for the training loop.
@@ -377,7 +383,7 @@ class Trainer:
 
         # forward propagation
         out = self.model(features)
-        loss = self.compute_loss(out, labels) / self.accumulate_iter
+        loss = self.loss_step(out, labels) / self.accumulate_iter
 
         # backpropagation
         self.accelerator.backward(loss)
@@ -389,7 +395,10 @@ class Trainer:
             )
         
         # gradient accumulation logic
-        if (batch_index + 1) % self.accumulate_iter == 0: # or batch_index + 1 == len(loader)
+        iter_time = (batch_index + 1) % self.accumulate_iter == 0
+        loader_end = batch_index + 1 == loader_len
+        
+        if iter_time  or loader_end:
             # update parameters and remove gradient
             self.optimizer.step()
             self.optimizer.zero_grad()
@@ -464,7 +473,7 @@ class Trainer:
         features, labels = batch
 
         out = self.model(features)
-        loss = self.compute_loss(out, labels)
+        loss = self.loss_step(out, labels)
 
         # compute metrics, needed for accumulated computation
         _ = self.metrics_handler.single_batch_computation(
@@ -472,13 +481,43 @@ class Trainer:
         )
         return loss
 
-    def compute_loss(
+    def loss_step(
         self, real: torch.Tensor, target: torch.Tensor
     ) -> torch.Tensor:
         """Compute loss graph.
 
-        When this method is overrided, the regularization procedures that are 
-        not included in the optimizer must be handled by the user.
+        This method calls 'loss_computation' to compute the loss and then 
+        applies the regularization algorithm if any. You should override the
+        'loss_computation' if you want to change something.
+
+        Parameters
+        ----------
+        real : torch.Tensor
+            Obtained tensor after performing a forward pass.
+        target : torch.Tensor
+            Target tensor to compute loss.
+
+        Returns
+        -------
+        loss : torch.Tensor
+            Loss graph contained in a (1 x 1) torch.Tensor.
+        """
+        loss = self.loss_computation(real=real, target=target)
+
+        # apply regularization if any
+        if self.regularizer is not None:
+            penalty = self.regularizer(
+                self.model.named_parameters(), self.accelerator.device
+            )
+            loss += penalty.item()
+
+        return loss
+
+    def loss_computation(
+        self, real: torch.Tensor, target: torch.Tensor
+    ) -> torch.Tensor:
+        """
+        Actual computation of the loss
 
         Parameters
         ----------
@@ -505,13 +544,6 @@ class Trainer:
                 f"""{target.dtype} to 'long' dtype to avoid errors."""
             )
             warnings.warn(msg)
-
-        # apply regularization if any
-        if self.regularizer is not None:
-            penalty = self.regularizer(
-                self.model.named_parameters(), self.accelerator.device
-            )
-            loss += penalty.item()
 
         return loss
 

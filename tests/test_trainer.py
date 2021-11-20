@@ -130,3 +130,18 @@ def test_trainer_mixed_precision(train_config):
 
     msg = "Validation loss did not strictly decrease"
     assert check_monotonically_decreasing(obtained_val_loss, strict=True), msg
+
+
+@pytest.mark.xfail
+def test_trainer_gradient_accumulation(train_config):
+    pass
+
+
+@pytest.mark.xfail
+def test_trainer_gradient_clipping(train_config):
+    pass
+
+
+@pytest.mark.xfail
+def test_trainer_all_features(train_config):
+    pass
