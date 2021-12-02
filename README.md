@@ -56,6 +56,7 @@ pytest -v tests/
 | Mixed precision training |     x     |               |         |
 |         Callbacks System |     x     |               |         |
 |    Hyperparameter search |           |       x       |         |
+|            Warm Training |           |       x       |    x    |
 
 ## Usage
 Assume we already have `DataLoaders` for the train and validation sets. 
@@ -99,6 +100,10 @@ trainer = Trainer(
     criterion=criterion,
     optimizer=optimizer, 
     regularizer=regularizer,
+    mixed_precision=True,
+    accumulate_iter=4, # accumulate gradient every 4 iterations,
+    gradient_clipping='norm',
+    gradient_clipping_kwrgs={'max_norm': 1.0, 'norm_type': 2.0},
     callbacks=[logger, early_stopping, scheduler]
 )
 
@@ -106,8 +111,8 @@ trainer.fit(train_loader, val_loader, epochs=1000)
 ```
 
 Since `torchfitter` leverages the power of `accelerate`, the device management
-will rely on the latter though you can set the `accelerate.Accelerator` 
-object to control its parameters:
+will rely on the latter. You can pass your own `accelerate.Accelerator` 
+object to fine tune its parameters:
 
 ```python
 from accelerate import Accelerator
@@ -153,27 +158,7 @@ class L1Regularization(RegularizerBase):
 ```
 
 Notice how the `penalty_term` is moved to the given `device`. This is necessary
-in order to avoid operations with tensors stored in different devices.
-
-If you override the `compute_loss` method, you must implement the 
-regularization in order to be able to use this feature:
-
-```python
-from torchfitter.trainer import Trainer
-
-
-class MyTrainer(Trainer):
-    ...
-    def compute_loss(self, real, target):
-        ...
-        # apply regularization if any
-        if self.regularizer is not None:
-            penalty = self.regularizer(
-                self.model.named_parameters(), self.device
-            )
-            loss += penalty.item()
-        ...
-```
+in order to avoid operations with tensors stored at different devices.
 
 ## Callbacks
 Callbacks allow you to interact with the model during the fitting process. They
@@ -186,12 +171,12 @@ from torchfitter.conventions import ParamsDict
 from torchfitter.callbacks.base import Callback
 
 
-class ModelSaver(Callback):
+class ModelCheckpoint(Callback):
     def __init__(self):
-        super(ModelSaver, self).__init__()
+        super(ModelCheckpoint, self).__init__()
 
     def __repr__(self) -> str:
-        return "ModelSaver()"
+        return "ModelCheckpoint()"
 
     def on_epoch_end(self, params_dict):
         epoch = params_dict[ParamsDict.EPOCH_NUMBER]
@@ -206,21 +191,6 @@ of the conventions:
 ```python
 >>> from torchfitter.conventions import ParamsDict
 >>> [(x, getattr(ParamsDict, x)) for x in ParamsDict.__dict__ if not x.startswith('__')]
-[('TRAIN_LOSS', 'training_loss'),
- ('VAL_LOSS', 'validation_loss'),
- ('EPOCH_TIME', 'epoch_time'),
- ('EPOCH_NUMBER', 'epoch_number'),
- ('TOTAL_EPOCHS', 'total_epochs'),
- ('TOTAL_TIME', 'total_time'),
- ('STOP_TRAINING', 'stop_training'),
- ('DEVICE', 'device'),
- ('MODEL', 'model'),
- ('ACCELERATOR', 'accelerator'),
- ('HISTORY', 'history'),
- ('HISTORY_TRAIN_LOSS', 'train_loss'),
- ('HISTORY_VAL_LOSS', 'validation_loss'),
- ('HISTORY_LR', 'learning_rate'),
- ('PROG_BAR', 'progress_bar')]
 ```
 
 And you can also check the doc to understand the meaning of each one of the 
@@ -228,83 +198,12 @@ parameters:
 ```python
 >>> from torchfitter.conventions import ParamsDict
 >>> print(ParamsDict.__doc__)
-
-    Naming conventions for torchfitter.trainer.Trainer internal parameters.
-
-    Attributes
-    ----------
-    TRAIN_LOSS : str
-        The current training loss.
-    VAL_LOSS : str
-        The current validation loss.
-    EPOCH_TIME : str
-        The time it took to compute the current epoch.
-    EPOCH_NUMBER : str
-        The corresponding number of the current epoch.
-    TOTAL_EPOCHS : str
-        The total number of epochs.
-    TOTAL_TIME : str
-        The total time it took to complete all epochs.
-    STOP_TRAINING : str
-        The total time it took to complete all epochs.
-    DEVICE : str
-        Device where the model and data are stored.
-    MODEL : str
-        The model to train.
-    ACCELERATOR : str
-        The accelerate.Accelerator object used to boost the training process.
-    HISTORY : str
-        Dictionary containing the metrics:
-        * ParamsDict.HISTORY_TRAIN_LOSS
-        * ParamsDict.HISTORY_VAL_LOSS
-        * ParamsDict.HISTORY_LR
-    HISTORY_TRAIN_LOSS : str
-        Train loss for each epoch up to the current epoch.
-    HISTORY_VAL_LOSS : str
-        Validation loss for each epoch up to the current epoch.
-    HISTORY_LR : str
-        Learning rate for each epoch up to the current epoch.
-    PROG_BAR : str
-        Progress bar from tqdm library.
 ```
 
 `NOTE:` the callbacks design can be considered as a port from Keras design. 
-`I AM NOT` the author of this callbacks design despite the fact that I made 
-some minor design changes. Find more in the `Credits` section.
+`I AM NOT` the author of this callback sysem design despite the fact that I 
+made some minor design changes. Find more in the `Credits` section.
 
-## Custom fitting process
-The current Trainer design has been created to process a dataloader that
-returns 2 tensors: features and labels. Extending the Trainer class and
-rewriting the methods `train_step` and `validation_step` should allow you to 
-create your own custom steps as long as they receive a dataloader and they 
-return the loss value as a number.
-
-Additionally, the loss computation can also be customized; just remember to
-handle the regularization if any.
-
-```python
-from torchfitter.trainer import Trainer
-
-
-class MyTrainer(Trainer):
-    def __init__(self, **kwargs):
-        super(MyTrainer, self).__init__(**kwargs)
-
-    def train_step(self, loader):
-        # ...
-        return loss # must be a number
-
-    def validation_step(self, loader):
-        # ...
-        return loss # must be a number
-
-    def loss_step(self, real, target):
-        pass
-
-    def compute_loss(self, real, target):
-        # ...
-        return loss # loss graph
-```
 
 ## FAQ
 * **Do you know Pytorch-Lightning/FastAI?**

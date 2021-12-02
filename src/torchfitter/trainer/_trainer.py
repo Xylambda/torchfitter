@@ -46,7 +46,8 @@ class Trainer:
     accelerator : accelerate.Accelerator
         Accelerator object from 'accelerate'.
     accumulate_iter : int, optional, default: 1
-        Accumulate gradients every 'accumulate_iter' iterations.
+        Accumulate gradients every 'accumulate_iter' iterations. The default
+        value does not accumulate the gradients.
     gradient_clipping : str or None, optional, {None, 'norm', 'value'}
         Norm gradient clipping of value gradient clipping. If None, gradient
         clipping won't be applied.
@@ -67,7 +68,7 @@ class Trainer:
     metrics_handler : torchfitter.trainer.MetricsHandler
         Handles the passed metrics.
     gradient_clipping_algo_ : callable
-        Gradient clipping algorithm or None
+        Gradient clipping algorithm or None.
 
     """
 
@@ -145,11 +146,18 @@ class Trainer:
         initial_epoch = self.internal_state.get_single_param(
             key=ParamsDict.EPOCH_NUMBER
         )
-        n_iter = len(train_loader) + len(val_loader)
 
         # wrap loaders within accelerate environment
         train_loader = self.accelerator.prepare_data_loader(train_loader)
         val_loader = self.accelerator.prepare_data_loader(val_loader)
+
+        # update internal state with loaders
+        self.internal_state.update_params(
+            **{
+                ParamsDict.TRAIN_LOADER: train_loader,
+                ParamsDict.VAL_LOADER: val_loader
+            }
+        )
 
         # track total training time
         total_start_time = time.perf_counter()
@@ -159,74 +167,65 @@ class Trainer:
         # ---- fitting process ----
         epoch = initial_epoch
         stop = False
-        while epoch <= epochs and not stop:
-            with tqdm(
-                range(1, n_iter+1),
-                bar_format=self.__bar_format,
-                ascii=True,
-                leave=False,
-                disable=disable_pbar,
-                unit=' batch'
-            ) as pbar:
-                pbar.set_description(f"Epoch: {epoch}/{epochs}")
-                
-                self.internal_state.update_params(**{ParamsDict.PROG_BAR: pbar})
-                self.callback_handler.on_epoch_start(
-                    self.internal_state.get_state_dict()
-                )
+        while epoch <= epochs and not stop:         
+            self.internal_state.update_params(
+                **{
+                    ParamsDict.PROG_BAR: None,
+                    ParamsDict.TOTAL_EPOCHS: epochs
+                }
+            )
+            self.callback_handler.on_epoch_start(
+                self.internal_state.get_state_dict()
+            )
 
-                # track epoch time
-                epoch_start_time = time.perf_counter()
+            # track epoch time
+            epoch_start_time = time.perf_counter()
 
-                # train step
-                self.callback_handler.on_train_step_start(
-                    self.internal_state.get_state_dict()
-                )
-                tr_loss = self.train_step(train_loader) # actual step
-                self.callback_handler.on_train_step_end(
-                    self.internal_state.get_state_dict()
-                )
+            # ------- train step -------
+            self.callback_handler.on_train_step_start(
+                self.internal_state.get_state_dict()
+            )
+            tr_loss = self.train_step(train_loader) # actual step
+            self.callback_handler.on_train_step_end(
+                self.internal_state.get_state_dict()
+            )
 
-                # validation step
-                self.callback_handler.on_validation_step_start(
-                    self.internal_state.get_state_dict()
-                )
-                val_loss = self.validation_step(val_loader)
-                self.callback_handler.on_validation_step_end(
-                    self.internal_state.get_state_dict()
-                )
+            # ------- validation step -------
+            self.callback_handler.on_validation_step_start(
+                self.internal_state.get_state_dict()
+            )
+            val_loss = self.validation_step(val_loader)
+            self.callback_handler.on_validation_step_end(
+                self.internal_state.get_state_dict()
+            )
 
-                self.internal_state.update_history(
-                    **{
-                        ParamsDict.HISTORY_TRAIN_LOSS: tr_loss,
-                        ParamsDict.HISTORY_VAL_LOSS: val_loss,
-                        ParamsDict.HISTORY_LR: 
-                            self.optimizer.param_groups[0]["lr"],
-                    }
-                )
+            self.internal_state.update_history(
+                **{
+                    ParamsDict.HISTORY_TRAIN_LOSS: tr_loss,
+                    ParamsDict.HISTORY_VAL_LOSS: val_loss,
+                    ParamsDict.HISTORY_LR: 
+                        self.optimizer.param_groups[0]["lr"],
+                }
+            )
 
-                epoch_time = time.perf_counter() - epoch_start_time
-                self.internal_state.update_params(
-                    **{
-                        ParamsDict.VAL_LOSS: val_loss,
-                        ParamsDict.TRAIN_LOSS: tr_loss,
-                        ParamsDict.EPOCH_TIME: epoch_time,
-                        ParamsDict.EPOCH_NUMBER: epoch,
-                        ParamsDict.TOTAL_EPOCHS: epochs,
-                    }
-                )
+            epoch_time = time.perf_counter() - epoch_start_time
+            self.internal_state.update_params(
+                **{
+                    ParamsDict.VAL_LOSS: val_loss,
+                    ParamsDict.TRAIN_LOSS: tr_loss,
+                    ParamsDict.EPOCH_TIME: epoch_time,
+                    ParamsDict.EPOCH_NUMBER: epoch,
+                }
+            )
 
-                self.callback_handler.on_epoch_end(
-                    self.internal_state.get_state_dict()
-                )
-                
-                epoch += 1
-                stop = self.internal_state.get_single_param(
-                    key=ParamsDict.STOP_TRAINING
-                )
-
-                if not disable_pbar:
-                    pbar.reset() # DISC: pbar.close() ??
+            self.callback_handler.on_epoch_end(
+                self.internal_state.get_state_dict()
+            )
+            
+            epoch += 1
+            stop = self.internal_state.get_single_param(
+                key=ParamsDict.STOP_TRAINING
+            )
 
         total_time = time.perf_counter() - total_start_time
 
@@ -244,10 +243,13 @@ class Trainer:
         """
         if self.gradient_clipping == 'value':
             algo = self.accelerator.clip_grad_value_
+        
         elif self.gradient_clipping == 'norm':
             algo = self.accelerator.clip_grad_norm_
+        
         elif self.gradient_clipping is None:
             algo = None
+        
         else:
             raise ValueError(
                 "Not supported gradient "
@@ -340,11 +342,16 @@ class Trainer:
 
         losses = []  # loss as mean of batch losses
         for batch_idx, batch in enumerate(loader):
+            self.callback_handler.on_train_batch_start(
+                self.internal_state.get_state_dict()
+            )
             loss = self.batch_train_step(
                 batch_index=batch_idx, batch=batch, loader_len=loader_len
             )
+            self.callback_handler.on_train_batch_end(
+                self.internal_state.get_state_dict()
+            )
             losses.append(loss.item())
-            self.internal_state.update_progress_bar(n=1)
 
         # compute accumulated metrics (metric.compute())
         metrics_accumulated = self.metrics_handler.accumulated_batch_computation()
@@ -395,10 +402,8 @@ class Trainer:
             )
         
         # gradient accumulation logic
-        iter_time = (batch_index + 1) % self.accumulate_iter == 0
-        loader_end = batch_index + 1 == loader_len
-        
-        if iter_time  or loader_end:
+        batch_idx_plus = batch_index + 1        
+        if batch_idx_plus % self.accumulate_iter == 0 or batch_idx_plus== loader_len:
             # update parameters and remove gradient
             self.optimizer.step()
             self.optimizer.zero_grad()
@@ -407,6 +412,15 @@ class Trainer:
         _ = self.metrics_handler.single_batch_computation(
             predictions=out, target=labels
         )
+
+        # update internal state
+        self.internal_state.update_params(
+            **{
+                ParamsDict.TRAIN_BATCH: batch,
+                ParamsDict.TRAIN_BATCH_IDX: batch_index
+            }
+        )
+
         return loss
 
     def validation_step(
@@ -432,11 +446,16 @@ class Trainer:
         losses = []  # loss as mean of batch losses
         with torch.no_grad():
             for batch_idx, batch in enumerate(loader):
+                self.callback_handler.on_validation_batch_start(
+                    self.internal_state.get_state_dict()
+                )
                 loss = self.batch_validation_step(
                     batch_index=batch_idx, batch=batch
                 )
+                self.callback_handler.on_validation_batch_end(
+                    self.internal_state.get_state_dict()
+                )
                 losses.append(loss.item())
-                self.internal_state.update_progress_bar(n=1)
 
             # compute accumulated metrics
             metrics_accumulated = self.metrics_handler.accumulated_batch_computation()
@@ -479,6 +498,15 @@ class Trainer:
         _ = self.metrics_handler.single_batch_computation(
             predictions=out, target=labels
         )
+
+        # update internal state
+        self.internal_state.update_params(
+            **{
+                ParamsDict.VAL_BATCH: batch,
+                ParamsDict.VAL_BATCH_IDX: batch_index
+            }
+        )
+
         return loss
 
     def loss_step(

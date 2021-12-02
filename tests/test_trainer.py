@@ -132,16 +132,108 @@ def test_trainer_mixed_precision(train_config):
     assert check_monotonically_decreasing(obtained_val_loss, strict=True), msg
 
 
-@pytest.mark.xfail
+#@pytest.mark.xfail
 def test_trainer_gradient_accumulation(train_config):
-    pass
+    (
+        train_loader,
+        val_loader,
+        model,
+        criterion,
+        optimizer,
+    ) = train_config
+
+    trainer = Trainer(
+        model=model,
+        criterion=criterion,
+        optimizer=optimizer,
+        accumulate_iter=4,
+    )
+    
+    # fitting process
+    trainer.fit(train_loader, val_loader, epochs=100)
+
+    obtained_train_loss = np.array(
+        trainer.internal_state.get_state_dict()[ParamsDict.HISTORY][ParamsDict.HISTORY_TRAIN_LOSS]
+    )
+    obtained_val_loss = np.array(
+        trainer.internal_state.get_state_dict()[ParamsDict.HISTORY][ParamsDict.HISTORY_VAL_LOSS]
+    )
+
+    msg = "Train loss did not strictly decrease"
+    assert check_monotonically_decreasing(obtained_train_loss, strict=True), msg
+
+    msg = "Validation loss did not strictly decrease"
+    assert check_monotonically_decreasing(obtained_val_loss, strict=True), msg
 
 
-@pytest.mark.xfail
+#@pytest.mark.xfail
 def test_trainer_gradient_clipping(train_config):
-    pass
+    (
+        train_loader,
+        val_loader,
+        model,
+        criterion,
+        optimizer,
+    ) = train_config
+
+    trainer = Trainer(
+        model=model,
+        criterion=criterion,
+        optimizer=optimizer,
+        mixed_precision=True,
+        gradient_clipping='norm',
+        gradient_clipping_kwrgs={'max_norm': 1.0, 'norm_type':2.0},
+    )
+    
+    # fitting process
+    trainer.fit(train_loader, val_loader, epochs=100)
+
+    obtained_train_loss = np.array(
+        trainer.internal_state.get_state_dict()[ParamsDict.HISTORY][ParamsDict.HISTORY_TRAIN_LOSS]
+    )
+    obtained_val_loss = np.array(
+        trainer.internal_state.get_state_dict()[ParamsDict.HISTORY][ParamsDict.HISTORY_VAL_LOSS]
+    )
+
+    msg = "Train loss did not strictly decrease"
+    assert check_monotonically_decreasing(obtained_train_loss, strict=True), msg
+
+    msg = "Validation loss did not strictly decrease"
+    assert check_monotonically_decreasing(obtained_val_loss, strict=True), msg
 
 
-@pytest.mark.xfail
+#@pytest.mark.xfail
 def test_trainer_all_features(train_config):
-    pass
+    (
+        train_loader,
+        val_loader,
+        model,
+        criterion,
+        optimizer,
+    ) = train_config
+
+    trainer = Trainer(
+        model=model,
+        criterion=criterion,
+        optimizer=optimizer,
+        mixed_precision=True,
+        accumulate_iter=4,
+        gradient_clipping='norm',
+        gradient_clipping_kwrgs={'max_norm': 1.0, 'norm_type':2.0},
+    )
+    
+    # fitting process
+    trainer.fit(train_loader, val_loader, epochs=100)
+
+    obtained_train_loss = np.array(
+        trainer.internal_state.get_state_dict()[ParamsDict.HISTORY][ParamsDict.HISTORY_TRAIN_LOSS]
+    )
+    obtained_val_loss = np.array(
+        trainer.internal_state.get_state_dict()[ParamsDict.HISTORY][ParamsDict.HISTORY_VAL_LOSS]
+    )
+
+    msg = "Train loss did not strictly decrease"
+    assert check_monotonically_decreasing(obtained_train_loss, strict=True), msg
+
+    msg = "Validation loss did not strictly decrease"
+    assert check_monotonically_decreasing(obtained_val_loss, strict=True), msg

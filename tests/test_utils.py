@@ -28,6 +28,11 @@ def test_numpy_to_torch():
     assert tensor.dtype == torch.float32, msg
 
 
+@pytest.mark.xfail(reason="Not implemented")
+def test_train_test_val_split():
+    pass
+
+
 @pytest.fixture
 def loader_config():
     tensor_a = torch.Tensor([1, 2, 3, 4, 5, 6])

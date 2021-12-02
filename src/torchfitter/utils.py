@@ -168,6 +168,22 @@ class FastTensorDataLoader:
         return self.n_batches
 
 
+def train_test_val_split(X, y):
+    """
+    Splits the given dataset into train, validation and test sets.
+
+    Parameters
+    ----------
+    X : array-like
+    y : array-like
+
+    Returns
+    -------
+    """
+    pass
+
+
+
 def get_logger(name: str, level: int) -> logging.Logger:
     """
     Generate a logger with the specified name and level.

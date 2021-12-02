@@ -40,6 +40,18 @@ class ParamsDict:
         Learning rate for each epoch up to the current epoch.
     PROG_BAR : str
         Progress bar from tqdm library.
+    TRAIN_LOADER : str
+        Train dataloader.
+    TRAIN_BATCH : str
+        Current training batch.
+    TRAIN_BATCH_IDX : str
+        Current training batch index.
+    VAL_LOADER : str
+        Validation dataloader.
+    VAL_BATCH : str
+        Current validation batch.
+    VAL_BATCH_IDX : str
+        Current validation batch index.
     """
     TRAIN_LOSS = "training_loss"
     VAL_LOSS = "validation_loss"
@@ -56,6 +68,12 @@ class ParamsDict:
     HISTORY_VAL_LOSS = "validation_loss"
     HISTORY_LR = "learning_rate"
     PROG_BAR = 'progress_bar'
+    TRAIN_LOADER = 'train_loader'
+    TRAIN_BATCH = 'train_batch'
+    TRAIN_BATCH_IDX = 'train_batch_idx'
+    VAL_LOADER = 'validation_loader'
+    VAL_BATCH = 'val_batch'
+    VAL_BATCH_IDX = 'val_batch_idx'
 
 
 class BarFormat:
