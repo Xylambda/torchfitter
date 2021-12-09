@@ -180,7 +180,7 @@ def test_trainer_gradient_clipping(train_config):
         optimizer=optimizer,
         mixed_precision=True,
         gradient_clipping='norm',
-        gradient_clipping_kwrgs={'max_norm': 1.0, 'norm_type':2.0},
+        gradient_clipping_kwargs={'max_norm': 1.0, 'norm_type':2.0},
     )
     
     # fitting process
@@ -216,7 +216,7 @@ def test_trainer_all_features(train_config):
         mixed_precision=True,
         accumulate_iter=4,
         gradient_clipping='norm',
-        gradient_clipping_kwrgs={'max_norm': 1.0, 'norm_type':2.0},
+        gradient_clipping_kwargs={'max_norm': 1.0, 'norm_type':2.0},
     )
     
     # fitting process
