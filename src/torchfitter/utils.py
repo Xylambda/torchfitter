@@ -6,6 +6,15 @@ import numpy as np
 from typing import Tuple, Union
 from torch.utils.data import Dataset
 
+__all__ = [
+    "DataWrapper",
+    "numpy_to_torch",
+    "check_model_on_cuda",
+    "FastTensorDataLoader",
+    "train_test_val_split"
+    "get_logger"
+]
+
 
 class DataWrapper(Dataset):
     """
@@ -180,7 +189,7 @@ def train_test_val_split(X, y):
     Returns
     -------
     """
-    pass
+    raise NotImplementedError("func 'train_test_val_split' is not implemented")
 
 
 

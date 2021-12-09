@@ -1,6 +1,6 @@
 
 <p align="center">
-  <img src="img/logo.png" width="650">
+  <img src="assets/logo.png" width="650">
 </p>
 
 ![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/Xylambda/torchfitter?label=VERSION&style=badge)
@@ -172,16 +172,27 @@ from torchfitter.callbacks.base import Callback
 
 
 class ModelCheckpoint(Callback):
-    def __init__(self):
+    def __init__(self, path):
         super(ModelCheckpoint, self).__init__()
+
+        self.path = path
 
     def __repr__(self) -> str:
         return "ModelCheckpoint()"
 
     def on_epoch_end(self, params_dict):
+        # get params
+        accelerator = params_dict[ParamsDict.ACCELERATOR]
         epoch = params_dict[ParamsDict.EPOCH_NUMBER]
-        model = params_dict[ParamsDict.MODEL]
-        torch.save(model.state_dict(), f"model_{epoch}.pt")
+
+        # ensure model is safe to save
+        _model = params_dict[ParamsDict.MODEL]
+        accelerator.wait_for_everyone()
+        unwrapped_model = accelerator.unwrap_model(_model)
+
+        # actual saving
+        fname = self.path / f'model_epoch_{epoch}.pt'
+        accelerator.save(unwrapped_model.state_dict(), fname)
 ```
 
 Each method receives `params_dict`, which is a dictionary object containing the

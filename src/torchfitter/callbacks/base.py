@@ -1,6 +1,8 @@
 """ Base callbacks class """
 import logging
 
+__all__ = ["Callback", "CallbackHandler"]
+
 
 class Callback:
     """

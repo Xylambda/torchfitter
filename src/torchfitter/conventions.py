@@ -11,6 +11,10 @@ class ParamsDict:
         The current training loss.
     VAL_LOSS : str
         The current validation loss.
+    BATCH_TRAIN_LOSS : str
+        Train loss of last computed training batch.
+    BATCH_VAL_LOSS : str
+        Validation loss of last computed validation batch.
     EPOCH_TIME : str
         The time it took to compute the current epoch.
     EPOCH_NUMBER : str
@@ -55,6 +59,8 @@ class ParamsDict:
     """
     TRAIN_LOSS = "training_loss"
     VAL_LOSS = "validation_loss"
+    BATCH_TRAIN_LOSS = ""
+    BATCH_VAL_LOSS = ""
     EPOCH_TIME = "epoch_time"
     EPOCH_NUMBER = "epoch_number"
     TOTAL_EPOCHS = "total_epochs"

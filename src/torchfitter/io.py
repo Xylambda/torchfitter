@@ -3,6 +3,9 @@
 import pickle
 
 
+__all__ = ["save_pickle", "load_pickle"]
+
+
 def save_pickle(obj, path, protocol=pickle.HIGHEST_PROTOCOL):
     """
     Save given object as pickle.

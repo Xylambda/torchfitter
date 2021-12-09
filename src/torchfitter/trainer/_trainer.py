@@ -1,14 +1,13 @@
 import time
 import torch
 import logging
-import warnings
 import statistics
 import torchmetrics
-from tqdm.auto import tqdm
 from typing import List, Tuple
 from accelerate import Accelerator
-from torchfitter.callbacks.base import CallbackHandler
-from torchfitter.conventions import ParamsDict, BarFormat
+from torchfitter.conventions import ParamsDict
+from torchfitter.regularization.base import RegularizerBase
+from torchfitter.callbacks.base import CallbackHandler, Callback
 from torchfitter.trainer._utils import TrainerInternalState, MetricsHandler
 
 
@@ -51,7 +50,7 @@ class Trainer:
     gradient_clipping : str or None, optional, {None, 'norm', 'value'}
         Norm gradient clipping of value gradient clipping. If None, gradient
         clipping won't be applied.
-    gradient_clipping_kwrgs : dict, optional, default: None
+    gradient_clipping_kwargs : dict, optional, default: None
         Dictionary containing keyword arguments for gradient clipping 
         algorithm. Example: {max_norm=1, norm_type=2}. See 
         https://huggingface.co/docs/accelerate/accelerator.html for more 
@@ -77,14 +76,14 @@ class Trainer:
         model: torch.nn.Module,
         criterion: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
-        regularizer=None,
+        regularizer: RegularizerBase=None,
         mixed_precision: bool=False,
-        callbacks: list=None,
+        callbacks: List[Callback]=None,
         metrics: List[torchmetrics.Metric]=None,
         accelerator: Accelerator=None,
         accumulate_iter: int=1,
         gradient_clipping: str=None,
-        gradient_clipping_kwrgs: dict=None,
+        gradient_clipping_kwargs: dict=None,
         log_level: int=logging.INFO
     ):
         self.criterion = criterion
@@ -93,7 +92,7 @@ class Trainer:
         self.metrics_list = metrics
         self.accumulate_iter = accumulate_iter
         self.gradient_clipping = gradient_clipping
-        self.gradient_clipping_kwrgs = gradient_clipping_kwrgs
+        self.gradient_clipping_kwargs = gradient_clipping_kwargs
         self.log_level = log_level
 
         if accelerator is None:
@@ -112,7 +111,6 @@ class Trainer:
         )
         self.metrics_handler = MetricsHandler(metrics_list=self.metrics_list)
         self.gradient_clipping_algo_ = self._prepare_gradient_clipping()
-        self.__bar_format = BarFormat.FORMAT
 
         if self.metrics_handler.metric_names is not None: # TODO: do this inside MetricsHandler
             names = self.metrics_handler.metric_names
@@ -123,24 +121,22 @@ class Trainer:
         train_loader: torch.utils.data.dataloader.DataLoader,
         val_loader: torch.utils.data.dataloader.DataLoader,
         epochs: int,
-        disable_pbar: bool=False,
     ) -> None:
         """Fit the model.
 
-        Fit the model using the given loaders for the given number of epochs. A
-        progress bar will be displayed using tqdm unless 'disable_pbar' is set
-        to True.
+        Fit the model using the given loaders for the given number of epochs. 
+        By default, the trainer does not display any information about the 
+        fitting process, but you can use any of the callbacks designed for that
+        purpose or create your own callbacks.
 
         Parameters
         ----------
         train_loader : torch.DataLoader
-            DataLoader containing train dataset.
+            DataLoader to iterate over the train dataset.
         val_loader : torch.DataLoader
-            DataLoader containing validation dataset.
+            DataLoader to iterate over the validation dataset.
         epochs : int
             Number of training epochs.
-        disable_pbar : bool, optional, default: False
-            If True, the TQDM progress bar will be disabled.
 
         """
         initial_epoch = self.internal_state.get_single_param(
@@ -155,49 +151,33 @@ class Trainer:
         self.internal_state.update_params(
             **{
                 ParamsDict.TRAIN_LOADER: train_loader,
-                ParamsDict.VAL_LOADER: val_loader
+                ParamsDict.VAL_LOADER: val_loader,
+                ParamsDict.TOTAL_EPOCHS: epochs
             }
         )
 
         # track total training time
         total_start_time = time.perf_counter()
-
         self.callback_handler.on_fit_start(self.internal_state.get_state_dict())
 
         # ---- fitting process ----
         epoch = initial_epoch
         stop = False
-        while epoch <= epochs and not stop:         
-            self.internal_state.update_params(
-                **{
-                    ParamsDict.PROG_BAR: None,
-                    ParamsDict.TOTAL_EPOCHS: epochs
-                }
-            )
-            self.callback_handler.on_epoch_start(
-                self.internal_state.get_state_dict()
-            )
+        while epoch <= epochs and not stop:
+            self.callback_handler.on_epoch_start(self.internal_state.get_state_dict())
 
             # track epoch time
             epoch_start_time = time.perf_counter()
 
             # ------- train step -------
-            self.callback_handler.on_train_step_start(
-                self.internal_state.get_state_dict()
-            )
+            self.callback_handler.on_train_step_start(self.internal_state.get_state_dict())
             tr_loss = self.train_step(train_loader) # actual step
-            self.callback_handler.on_train_step_end(
-                self.internal_state.get_state_dict()
-            )
+            self.callback_handler.on_train_step_end(self.internal_state.get_state_dict())
 
             # ------- validation step -------
-            self.callback_handler.on_validation_step_start(
-                self.internal_state.get_state_dict()
-            )
+            self.callback_handler.on_validation_step_start(self.internal_state.get_state_dict())
             val_loss = self.validation_step(val_loader)
-            self.callback_handler.on_validation_step_end(
-                self.internal_state.get_state_dict()
-            )
+            self.callback_handler.on_validation_step_end(self.internal_state.get_state_dict())
 
             self.internal_state.update_history(
                 **{
@@ -214,7 +194,6 @@ class Trainer:
                     ParamsDict.VAL_LOSS: val_loss,
                     ParamsDict.TRAIN_LOSS: tr_loss,
                     ParamsDict.EPOCH_TIME: epoch_time,
-                    ParamsDict.EPOCH_NUMBER: epoch,
                 }
             )
 
@@ -226,6 +205,7 @@ class Trainer:
             stop = self.internal_state.get_single_param(
                 key=ParamsDict.STOP_TRAINING
             )
+            self.internal_state.update_params(**{ParamsDict.EPOCH_NUMBER: epoch})
 
         total_time = time.perf_counter() - total_start_time
 
@@ -256,23 +236,6 @@ class Trainer:
                 f"gradient clipping algorithm: '{self.gradient_clipping}'"
             )
         return algo
-
-    def set_bar_format(self, fmt: str) -> None:
-        """
-        Set the bar format for the tqdm progress bar. See References for more
-        info.
-
-        Parameters
-        ----------
-        fmt : str
-            New bar format.
-
-        References
-        ----------
-        .. [1] tqdm API
-           https://tqdm.github.io/docs/tqdm/
-        """
-        self.__bar_format = fmt
 
     def set_scaler(
         self, scaler: torch.cuda.amp.grad_scaler.GradScaler
@@ -338,16 +301,13 @@ class Trainer:
             Mean loss of the batch.
         """
         self.model.train()
-        loader_len = len(loader) # used for gradient accumulation
 
         losses = []  # loss as mean of batch losses
         for batch_idx, batch in enumerate(loader):
             self.callback_handler.on_train_batch_start(
                 self.internal_state.get_state_dict()
             )
-            loss = self.batch_train_step(
-                batch_index=batch_idx, batch=batch, loader_len=loader_len
-            )
+            loss = self.batch_train_step(batch_index=batch_idx, batch=batch)
             self.callback_handler.on_train_batch_end(
                 self.internal_state.get_state_dict()
             )
@@ -369,7 +329,6 @@ class Trainer:
         self,
         batch_index,
         batch: Tuple[torch.Tensor, torch.Tensor],
-        loader_len: int
     ) -> torch.Tensor:
         """
         Define the computations to perform on each batch for the training loop.
@@ -398,11 +357,14 @@ class Trainer:
         # gradient clipping
         if self.gradient_clipping_algo_ is not None:
             self.gradient_clipping_algo_(
-                self.model.parameters(), **self.gradient_clipping_kwrgs
+                self.model.parameters(), **self.gradient_clipping_kwargs
             )
         
         # gradient accumulation logic
-        batch_idx_plus = batch_index + 1        
+        batch_idx_plus = batch_index + 1
+        loader_len = self.internal_state.get_single_param(
+            key=ParamsDict.TRAIN_LOADER
+        )
         if batch_idx_plus % self.accumulate_iter == 0 or batch_idx_plus== loader_len:
             # update parameters and remove gradient
             self.optimizer.step()
@@ -446,15 +408,9 @@ class Trainer:
         losses = []  # loss as mean of batch losses
         with torch.no_grad():
             for batch_idx, batch in enumerate(loader):
-                self.callback_handler.on_validation_batch_start(
-                    self.internal_state.get_state_dict()
-                )
-                loss = self.batch_validation_step(
-                    batch_index=batch_idx, batch=batch
-                )
-                self.callback_handler.on_validation_batch_end(
-                    self.internal_state.get_state_dict()
-                )
+                self.callback_handler.on_validation_batch_start(self.internal_state.get_state_dict())
+                loss = self.batch_validation_step(batch_index=batch_idx, batch=batch)
+                self.callback_handler.on_validation_batch_end(self.internal_state.get_state_dict())
                 losses.append(loss.item())
 
             # compute accumulated metrics
@@ -503,7 +459,8 @@ class Trainer:
         self.internal_state.update_params(
             **{
                 ParamsDict.VAL_BATCH: batch,
-                ParamsDict.VAL_BATCH_IDX: batch_index
+                ParamsDict.VAL_BATCH_IDX: batch_index,
+                #ParamsDict.BATCH_VAL_LOSS: loss
             }
         )
 
@@ -514,9 +471,8 @@ class Trainer:
     ) -> torch.Tensor:
         """Compute loss graph.
 
-        This method calls 'loss_computation' to compute the loss and then 
-        applies the regularization algorithm if any. You should override the
-        'loss_computation' if you want to change something.
+        If you override this method the passed regularizer algorithms won't be 
+        applied unless they are specifically added.
 
         Parameters
         ----------
@@ -530,7 +486,7 @@ class Trainer:
         loss : torch.Tensor
             Loss graph contained in a (1 x 1) torch.Tensor.
         """
-        loss = self.loss_computation(real=real, target=target)
+        loss = self.criterion(real, target)
 
         # apply regularization if any
         if self.regularizer is not None:
@@ -538,40 +494,6 @@ class Trainer:
                 self.model.named_parameters(), self.accelerator.device
             )
             loss += penalty.item()
-
-        return loss
-
-    def loss_computation(
-        self, real: torch.Tensor, target: torch.Tensor
-    ) -> torch.Tensor:
-        """
-        Actual computation of the loss
-
-        Parameters
-        ----------
-        real : torch.Tensor
-            Obtained tensor after performing a forward pass.
-        target : torch.Tensor
-            Target tensor to compute loss.
-
-        Returns
-        -------
-        loss : torch.Tensor
-            Loss graph contained in a (1 x 1) torch.Tensor.
-
-        Warning
-        -------
-        This method will cast the target tensor to 'long' data type if needed.
-        """
-        try:
-            loss = self.criterion(real, target)
-        except:
-            loss = self.criterion(real, target.long())
-            msg = (
-                f"""Target tensor has been casted from"""
-                f"""{target.dtype} to 'long' dtype to avoid errors."""
-            )
-            warnings.warn(msg)
 
         return loss
 
