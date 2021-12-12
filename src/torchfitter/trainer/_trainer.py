@@ -180,6 +180,7 @@ class Trainer:
             self.callback_handler.on_validation_step_end(self.internal_state.get_state_dict())
 
             self.internal_state.update_history(
+                is_batch=False,
                 **{
                     ParamsDict.HISTORY_TRAIN_LOSS: tr_loss,
                     ParamsDict.HISTORY_VAL_LOSS: val_loss,
@@ -318,7 +319,7 @@ class Trainer:
         
         if metrics_accumulated is not None:
             self.internal_state.update_metrics(
-                is_train=True, **metrics_accumulated
+                is_train=True, is_batch=False, **metrics_accumulated
             )
 
         # reset metrics
@@ -371,8 +372,23 @@ class Trainer:
             self.optimizer.zero_grad()
 
         # compute metrics, needed for accumulated computation
-        _ = self.metrics_handler.single_batch_computation(
+        metrics_single = self.metrics_handler.single_batch_computation(
             predictions=out, target=labels
+        )
+
+        if metrics_single is not None:
+            self.internal_state.update_metrics(
+                is_train=True, is_batch=True, **metrics_single
+            )
+
+        # update history
+        self.internal_state.update_history(
+            is_batch=True,
+            **{
+                ParamsDict.HISTORY_TRAIN_LOSS: loss.item(),
+                ParamsDict.HISTORY_LR: 
+                    self.optimizer.param_groups[0]["lr"],
+            }
         )
 
         # update internal state
@@ -460,8 +476,13 @@ class Trainer:
             **{
                 ParamsDict.VAL_BATCH: batch,
                 ParamsDict.VAL_BATCH_IDX: batch_index,
-                #ParamsDict.BATCH_VAL_LOSS: loss
             }
+        )
+
+        # update history
+        self.internal_state.update_history(
+            is_batch=True,
+            **{ParamsDict.HISTORY_VAL_LOSS: loss.item()}
         )
 
         return loss

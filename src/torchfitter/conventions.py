@@ -31,8 +31,15 @@ class ParamsDict:
         The model to train.
     ACCELERATOR : str
         The accelerate.Accelerator object used to boost the training process.
-    HISTORY : str
-        Dictionary containing the metrics:
+    BATCH_HISTORY : str
+        History of the batch metrics. It is a dictionary
+        containing the passed and the following metrics:
+        * ParamsDict.HISTORY_TRAIN_LOSS
+        * ParamsDict.HISTORY_VAL_LOSS
+        * ParamsDict.HISTORY_LR
+    EPOCH_HISTORY : str
+        History of the epoch (accumulated batch) metrics. It is a dictionary
+        containing the passed and the following metrics:
         * ParamsDict.HISTORY_TRAIN_LOSS
         * ParamsDict.HISTORY_VAL_LOSS
         * ParamsDict.HISTORY_LR
@@ -42,8 +49,6 @@ class ParamsDict:
         Validation loss for each epoch up to the current epoch.
     HISTORY_LR : str
         Learning rate for each epoch up to the current epoch.
-    PROG_BAR : str
-        Progress bar from tqdm library.
     TRAIN_LOADER : str
         Train dataloader.
     TRAIN_BATCH : str
@@ -69,34 +74,14 @@ class ParamsDict:
     DEVICE = "device"
     MODEL = "model"
     ACCELERATOR = "accelerator"
-    HISTORY = "history"
+    BATCH_HISTORY = 'batch_history'
+    EPOCH_HISTORY = 'epoch_history'
     HISTORY_TRAIN_LOSS = "train_loss"
     HISTORY_VAL_LOSS = "validation_loss"
     HISTORY_LR = "learning_rate"
-    PROG_BAR = 'progress_bar'
     TRAIN_LOADER = 'train_loader'
     TRAIN_BATCH = 'train_batch'
     TRAIN_BATCH_IDX = 'train_batch_idx'
     VAL_LOADER = 'validation_loader'
     VAL_BATCH = 'val_batch'
     VAL_BATCH_IDX = 'val_batch_idx'
-
-
-class BarFormat:
-    """
-    Conventions for the bar formatting of tqdm progress bar. See references for
-    more info.
-
-    Parameters
-    ----------
-    FORMAT : str
-        Bar format for tqdm progress bar.
-
-    References
-    ----------
-    .. [1] tqdm - https://tqdm.github.io/docs/tqdm/#__init__
-    """
-    r_bar = '| {n_fmt}/{total_fmt} | {rate_noinv_fmt}{postfix}, time_remaining: {remaining} s'
-    left = "{l_bar}{bar}"
-    
-    FORMAT = f"{left}{r_bar}"

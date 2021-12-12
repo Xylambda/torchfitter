@@ -54,38 +54,26 @@ class TrainerInternalState:
         """
         Helper function that initializes all attributes.
         """
-        # https://stackoverflow.com/questions/1639174/creating-class-instance-properties-from-a-dictionary
-        self.training_loss = float('inf')
-        self.validation_loss = float('inf')
-        self.epoch_time = 0
-        self.epoch_number = 1
-        self.total_epochs = None
-        self.total_time = 0
-        self.stop_training = False
-        self.accelerator = accelerator
-        self.device = accelerator.device
-        self.model = model
-        self.progress_bar = None
-        self.history = {
-            'train_loss': [],
-            'validation_loss': [],
-            'learning_rate': []
+        self.__dict__[ParamsDict.TRAIN_LOSS] = float('inf')
+        self.__dict__[ParamsDict.VAL_LOSS] = float('inf')
+        self.__dict__[ParamsDict.EPOCH_TIME] = 0
+        self.__dict__[ParamsDict.EPOCH_NUMBER] = 1
+        self.__dict__[ParamsDict.TOTAL_EPOCHS] = None
+        self.__dict__[ParamsDict.TOTAL_TIME] = 0
+        self.__dict__[ParamsDict.STOP_TRAINING] = False
+        self.__dict__[ParamsDict.ACCELERATOR] = accelerator
+        self.__dict__[ParamsDict.DEVICE] = accelerator.device
+        self.__dict__[ParamsDict.MODEL] = model
+        self.__dict__[ParamsDict.EPOCH_HISTORY] = {
+            ParamsDict.HISTORY_TRAIN_LOSS: [],
+            ParamsDict.HISTORY_VAL_LOSS: [],
+            ParamsDict.HISTORY_LR: []
         }
-
-    def add_history_elements(self, *args) -> None:
-        """
-        Parameters
-        ----------
-        *args : iterable
-            Keys to add to the history dictionary.
-        """
-        for key in args:
-            if not isinstance(key, str):
-                raise TypeError(
-                    f"'key' {key} must be a string, not {type(key)}"
-                )
-            else:
-                self.history[key] = []
+        self.__dict__[ParamsDict.BATCH_HISTORY] = {
+            ParamsDict.HISTORY_TRAIN_LOSS: [],
+            ParamsDict.HISTORY_VAL_LOSS: [],
+            ParamsDict.HISTORY_LR: []
+        }
 
     def add_metrics(self, *args) -> None:
         """
@@ -102,11 +90,11 @@ class TrainerInternalState:
                 raise TypeError(
                     f"'key' {key} must be a string, not {type(key)}"
                 )
-            else:
-                self.history[key] = {} # avoid key error
-
-                self.history[key]['train'] = []
-                self.history[key]['validation'] = []
+            
+            for metric_type in [ParamsDict.EPOCH_HISTORY, ParamsDict.BATCH_HISTORY]:
+                self.__dict__[metric_type][key] = {} # avoid key error
+                self.__dict__[metric_type][key]['train'] = []
+                self.__dict__[metric_type][key]['validation'] = []
 
     def get_single_param(self, key: str) -> object:
         """
@@ -171,16 +159,7 @@ class TrainerInternalState:
 
         return params
 
-    def update_progress_bar(self, n: int=1) -> None:
-        """
-        Parameters
-        ---------
-        n : int
-            Number used to manually update the tqdm progress bar.
-        """
-        self.progress_bar.update(n)
-
-    def update_history(self,  **kwargs) -> None:
+    def update_history(self, is_batch=False, **kwargs) -> None:
         """
         Update history dictionary with the passed key-value pairs.
 
@@ -189,11 +168,14 @@ class TrainerInternalState:
         kwargs : dict
             Dictionary with keys to update.
         """
+        # select batch or epoch
+        hist_type = ParamsDict.BATCH_HISTORY if is_batch else ParamsDict.EPOCH_HISTORY
+
         for key, value in kwargs.items():
-            if key not in self.__dict__[ParamsDict.HISTORY]:
+            if key not in self.__dict__[hist_type]:
                 raise KeyError(f"'{key}' not found in history dict.")
-            else:
-                self.__dict__[ParamsDict.HISTORY][key].append(value)
+            
+            self.__dict__[hist_type][key].append(value)
 
     def update_params(self, **kwargs) -> None:
         """
@@ -207,7 +189,9 @@ class TrainerInternalState:
         for key, value in kwargs.items():
             self.__dict__[key] = value
 
-    def update_metrics(self, is_train: bool, **kwargs) -> None:
+    def update_metrics(
+        self, is_train: bool, is_batch: bool=False, **kwargs
+    ) -> None:
         """
         Update the metrics dictionary with the passed key-value pairs.
 
@@ -217,14 +201,17 @@ class TrainerInternalState:
             If True, the train metrics will be updated. Otherwise, the 
             validation metrics will be updated.
         """
+        # select batch or epoch
+        hist_type = ParamsDict.BATCH_HISTORY if is_batch else ParamsDict.EPOCH_HISTORY
+
+        # select train or validation
+        sub_key = 'train' if is_train else 'validation'
+
         for key, value in kwargs.items():
-            if key not in self.__dict__[ParamsDict.HISTORY]:
+            if key not in self.__dict__[hist_type]:
                 raise KeyError(f"'{key}' not found in history dict.")
-            else:
-                if is_train:
-                    self.__dict__[ParamsDict.HISTORY][key]['train'].append(value)
-                else:
-                    self.__dict__[ParamsDict.HISTORY][key]['validation'].append(value)
+
+            self.__dict__[hist_type][key][sub_key].append(value)
     
     def reset_parameters(self, reset_model=True):
         if reset_model:
