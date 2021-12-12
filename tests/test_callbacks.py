@@ -179,7 +179,7 @@ def test_learning_rate_scheduler(train_config):
     )
 
     trainer.fit(train_loader, val_loader, epochs=25)
-    obtained_lr = trainer.internal_state.get_state_dict()['history']['learning_rate']
+    obtained_lr = trainer.internal_state.get_state_dict()[ParamsDict.EPOCH_HISTORY]['learning_rate']
 
     msg = "LR values are not monotonically decreasing."
     assert check_monotonically_decreasing(obtained_lr), msg

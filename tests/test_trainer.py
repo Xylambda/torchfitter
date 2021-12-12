@@ -85,10 +85,10 @@ def test_trainer(train_config):
     trainer.fit(train_loader, val_loader, epochs=100)
 
     obtained_train_loss = np.array(
-        trainer.internal_state.get_state_dict()[ParamsDict.HISTORY][ParamsDict.HISTORY_TRAIN_LOSS]
+        trainer.internal_state.get_state_dict()[ParamsDict.EPOCH_HISTORY][ParamsDict.HISTORY_TRAIN_LOSS]
     )
     obtained_val_loss = np.array(
-        trainer.internal_state.get_state_dict()[ParamsDict.HISTORY][ParamsDict.HISTORY_VAL_LOSS]
+        trainer.internal_state.get_state_dict()[ParamsDict.EPOCH_HISTORY][ParamsDict.HISTORY_VAL_LOSS]
     )
 
     msg = "Train loss did not strictly decrease"
@@ -119,10 +119,10 @@ def test_trainer_mixed_precision(train_config):
     trainer.fit(train_loader, val_loader, epochs=100)
 
     obtained_train_loss = np.array(
-        trainer.internal_state.get_state_dict()[ParamsDict.HISTORY][ParamsDict.HISTORY_TRAIN_LOSS]
+        trainer.internal_state.get_state_dict()[ParamsDict.EPOCH_HISTORY][ParamsDict.HISTORY_TRAIN_LOSS]
     )
     obtained_val_loss = np.array(
-        trainer.internal_state.get_state_dict()[ParamsDict.HISTORY][ParamsDict.HISTORY_VAL_LOSS]
+        trainer.internal_state.get_state_dict()[ParamsDict.EPOCH_HISTORY][ParamsDict.HISTORY_VAL_LOSS]
     )
 
     msg = "Train loss did not strictly decrease"
@@ -152,10 +152,10 @@ def test_trainer_gradient_accumulation(train_config):
     trainer.fit(train_loader, val_loader, epochs=100)
 
     obtained_train_loss = np.array(
-        trainer.internal_state.get_state_dict()[ParamsDict.HISTORY][ParamsDict.HISTORY_TRAIN_LOSS]
+        trainer.internal_state.get_state_dict()[ParamsDict.EPOCH_HISTORY][ParamsDict.HISTORY_TRAIN_LOSS]
     )
     obtained_val_loss = np.array(
-        trainer.internal_state.get_state_dict()[ParamsDict.HISTORY][ParamsDict.HISTORY_VAL_LOSS]
+        trainer.internal_state.get_state_dict()[ParamsDict.EPOCH_HISTORY][ParamsDict.HISTORY_VAL_LOSS]
     )
 
     msg = "Train loss did not strictly decrease"
@@ -187,10 +187,10 @@ def test_trainer_gradient_clipping(train_config):
     trainer.fit(train_loader, val_loader, epochs=100)
 
     obtained_train_loss = np.array(
-        trainer.internal_state.get_state_dict()[ParamsDict.HISTORY][ParamsDict.HISTORY_TRAIN_LOSS]
+        trainer.internal_state.get_state_dict()[ParamsDict.EPOCH_HISTORY][ParamsDict.HISTORY_TRAIN_LOSS]
     )
     obtained_val_loss = np.array(
-        trainer.internal_state.get_state_dict()[ParamsDict.HISTORY][ParamsDict.HISTORY_VAL_LOSS]
+        trainer.internal_state.get_state_dict()[ParamsDict.EPOCH_HISTORY][ParamsDict.HISTORY_VAL_LOSS]
     )
 
     msg = "Train loss did not strictly decrease"
@@ -223,10 +223,10 @@ def test_trainer_all_features(train_config):
     trainer.fit(train_loader, val_loader, epochs=100)
 
     obtained_train_loss = np.array(
-        trainer.internal_state.get_state_dict()[ParamsDict.HISTORY][ParamsDict.HISTORY_TRAIN_LOSS]
+        trainer.internal_state.get_state_dict()[ParamsDict.EPOCH_HISTORY][ParamsDict.HISTORY_TRAIN_LOSS]
     )
     obtained_val_loss = np.array(
-        trainer.internal_state.get_state_dict()[ParamsDict.HISTORY][ParamsDict.HISTORY_VAL_LOSS]
+        trainer.internal_state.get_state_dict()[ParamsDict.EPOCH_HISTORY][ParamsDict.HISTORY_VAL_LOSS]
     )
 
     msg = "Train loss did not strictly decrease"

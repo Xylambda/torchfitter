@@ -41,7 +41,10 @@ class Trainer:
     callbacks : list of torchfitter.callback.Callback
         Callbacks to use during the training process.
     metrics : list of torchmetrics.Metric, optional, default: None
-        List of metrics to compute in the fitting process.
+        List of metrics to compute in the fitting process. The metrics will be
+        registered in the internal state using the name of the class. For 
+        example, passing `[MeanSquaredError()]` will be registered as 
+        `MeanSquaredError`.
     accelerator : accelerate.Accelerator
         Accelerator object from 'accelerate'.
     accumulate_iter : int, optional, default: 1
