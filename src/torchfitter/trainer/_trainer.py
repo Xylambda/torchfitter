@@ -28,7 +28,7 @@ class Trainer:
     model : torch.Module
         The model to train.
     criterion : torch.Module
-        Loss function criterion.
+        Loss function criterion used to optimize the model.
     optimizer : torch.optim
         Optimizer to perform the parameters update.
     regularizer : torchfitter.regularizer, optional, default: None
@@ -112,10 +112,12 @@ class Trainer:
         self.callback_handler = CallbackHandler(
             callbacks_list=self.callbacks_list
         )
-        self.metrics_handler = MetricsHandler(metrics_list=self.metrics_list)
+        self.metrics_handler = MetricsHandler(
+            metrics_list=self.metrics_list, criterion=criterion
+        )
         self.gradient_clipping_algo_ = self._prepare_gradient_clipping()
 
-        if self.metrics_handler.metric_names is not None: # TODO: do this inside MetricsHandler
+        if self.metrics_handler.metric_names is not None:
             names = self.metrics_handler.metric_names
             self.internal_state.add_metrics(*names)
  
@@ -124,7 +126,7 @@ class Trainer:
         train_loader: torch.utils.data.dataloader.DataLoader,
         val_loader: torch.utils.data.dataloader.DataLoader,
         epochs: int,
-    ) -> None:
+    ) -> dict:
         """Fit the model.
 
         Fit the model using the given loaders for the given number of epochs. 
@@ -140,6 +142,12 @@ class Trainer:
             DataLoader to iterate over the validation dataset.
         epochs : int
             Number of training epochs.
+
+        Returns
+        -------
+        history : dict
+            Dictionay with epoch and batch metrics. The metrics contained in 
+            the dictionary will be the passed metrics + criterion results.
 
         """
         initial_epoch = self.internal_state.get_single_param(
@@ -182,14 +190,20 @@ class Trainer:
             val_loss = self.validation_step(val_loader)
             self.callback_handler.on_validation_step_end(self.internal_state.get_state_dict())
 
-            self.internal_state.update_history(
-                is_batch=False,
-                **{
-                    ParamsDict.HISTORY_TRAIN_LOSS: tr_loss,
-                    ParamsDict.HISTORY_VAL_LOSS: val_loss,
-                    ParamsDict.HISTORY_LR: 
-                        self.optimizer.param_groups[0]["lr"],
-                }
+            # -------- update internal state to track training --------
+            self.internal_state.update_loss_history(
+                value=tr_loss,
+                is_train=True,
+                is_batch=False
+            )
+            self.internal_state.update_loss_history(
+                value=val_loss,
+                is_train=False,
+                is_batch=False
+            )
+            self.internal_state.update_lr_history(
+                value=self.optimizer.param_groups[0]["lr"],
+                is_batch=False
             )
 
             epoch_time = time.perf_counter() - epoch_start_time
@@ -215,6 +229,17 @@ class Trainer:
 
         self.internal_state.update_params(**{ParamsDict.TOTAL_TIME: total_time})
         self.callback_handler.on_fit_end(self.internal_state.get_state_dict())
+
+        # construct history object to return
+        history = {
+            ParamsDict.EPOCH_HISTORY : self.internal_state.get_single_param(
+                key=ParamsDict.EPOCH_HISTORY
+            ),
+            ParamsDict.BATCH_HISTORY: self.internal_state.get_single_param(
+                key=ParamsDict.BATCH_HISTORY
+            )
+        }
+        return history
 
     def _prepare_gradient_clipping(self):
         """
@@ -384,14 +409,16 @@ class Trainer:
                 is_train=True, is_batch=True, **metrics_single
             )
 
+        # ----------- internal state updated ------------
         # update history
-        self.internal_state.update_history(
-            is_batch=True,
-            **{
-                ParamsDict.HISTORY_TRAIN_LOSS: loss.item(),
-                ParamsDict.HISTORY_LR: 
-                    self.optimizer.param_groups[0]["lr"],
-            }
+        self.internal_state.update_loss_history(
+            value=loss.item(),
+            is_train=True,
+            is_batch=True
+        )
+
+        self.internal_state.update_lr_history(
+            value=self.optimizer.param_groups[0]["lr"], is_batch=True
         )
 
         # update internal state
@@ -470,22 +497,33 @@ class Trainer:
         loss = self.loss_step(out, labels)
 
         # compute metrics, needed for accumulated computation
-        _ = self.metrics_handler.single_batch_computation(
+        metrics_single = self.metrics_handler.single_batch_computation(
             predictions=out, target=labels
         )
 
+        # ----------- internal state updated ------------
+        # update metrics dict
+        if metrics_single is not None:
+            self.internal_state.update_metrics(
+                is_train=False, is_batch=True, **metrics_single
+            )
+
         # update internal state
+        self.internal_state.update_loss_history(
+            value=loss.item(),
+            is_train=False,
+            is_batch=True
+        )
+
+        self.internal_state.update_lr_history(
+            value=self.optimizer.param_groups[0]["lr"], is_batch=True
+        )
+
         self.internal_state.update_params(
             **{
                 ParamsDict.VAL_BATCH: batch,
                 ParamsDict.VAL_BATCH_IDX: batch_index,
             }
-        )
-
-        # update history
-        self.internal_state.update_history(
-            is_batch=True,
-            **{ParamsDict.HISTORY_VAL_LOSS: loss.item()}
         )
 
         return loss

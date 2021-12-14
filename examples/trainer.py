@@ -11,6 +11,7 @@ from pathlib import Path
 from torch.utils.data import DataLoader
 from torchfitter.trainer import Trainer
 from torchfitter.utils import DataWrapper
+from torchfitter.conventions import ParamsDict
 from sklearn.model_selection import train_test_split
 from torchfitter.regularization import L1Regularization
 from torchfitter.callbacks import (
@@ -102,7 +103,7 @@ if __name__ == "__main__":
 
     # -------------------------------------------------------------------------
     # fitting process
-    trainer.fit(train_loader, val_loader, epochs=n_epochs)
+    history = trainer.fit(train_loader, val_loader, epochs=n_epochs)
 
     # predictions
     with torch.no_grad():
@@ -112,9 +113,10 @@ if __name__ == "__main__":
     # -------------------------------------------------------------------------
     # plot predictions, losses and learning rate
     fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(19,4))
+    epoch_hist = history[ParamsDict.EPOCH_HISTORY]
 
-    ax[0].plot(trainer.internal_state.history['train_loss'], label='Train loss')
-    ax[0].plot(trainer.internal_state.history['validation_loss'], label='Validation loss')
+    ax[0].plot(epoch_hist[ParamsDict.LOSS]['train'], label='Train loss')
+    ax[0].plot(epoch_hist[ParamsDict.LOSS]['validation'], label='Validation loss')
     ax[0].set_title('Train and validation losses')
     ax[0].grid()
     ax[0].legend();
@@ -126,7 +128,7 @@ if __name__ == "__main__":
     ax[1].legend();
 
 
-    ax[2].plot(trainer.internal_state.history['learning_rate'], label="Learning rate")
+    ax[2].plot(epoch_hist[ParamsDict.HISTORY_LR], label="Learning rate")
     ax[2].set_title('Learning Rate')
     ax[2].legend();
     ax[2].grid()
@@ -135,14 +137,17 @@ if __name__ == "__main__":
     # plot metrics evolution
     fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(15,5))
 
-    ax[0].plot(trainer.internal_state.history['MeanSquaredError']['train'], label='Train')
-    ax[0].plot(trainer.internal_state.history['MeanSquaredError']['validation'], label='Validation')
+    mae_hist = history[ParamsDict.EPOCH_HISTORY]['MeanAbsoluteError']
+    mse_hist = history[ParamsDict.EPOCH_HISTORY]['MeanSquaredError']
+
+    ax[0].plot(mse_hist['train'], label='Train')
+    ax[0].plot(mse_hist['validation'], label='Validation')
     ax[0].set_title('Mean Squared Error')
     ax[0].grid()
     ax[0].legend();
 
-    ax[1].plot(trainer.internal_state.history['MeanAbsoluteError']['train'], label='Train')
-    ax[1].plot(trainer.internal_state.history['MeanAbsoluteError']['validation'], label='Validation')
+    ax[1].plot(mae_hist['train'], label='Train')
+    ax[1].plot(mae_hist['validation'], label='Validation')
     ax[1].set_title('Mean Absolute Error')
     ax[1].grid()
     ax[1].legend();

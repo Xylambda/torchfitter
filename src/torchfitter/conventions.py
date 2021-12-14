@@ -43,10 +43,9 @@ class ParamsDict:
         * ParamsDict.HISTORY_TRAIN_LOSS
         * ParamsDict.HISTORY_VAL_LOSS
         * ParamsDict.HISTORY_LR
-    HISTORY_TRAIN_LOSS : str
-        Train loss for each epoch up to the current epoch.
-    HISTORY_VAL_LOSS : str
-        Validation loss for each epoch up to the current epoch.
+    LOSS : str
+        Loss criterion historical value. It is a dictionary containing the keys
+        'train' and 'validation'.
     HISTORY_LR : str
         Learning rate for each epoch up to the current epoch.
     TRAIN_LOADER : str
@@ -76,8 +75,7 @@ class ParamsDict:
     ACCELERATOR = "accelerator"
     BATCH_HISTORY = 'batch_history'
     EPOCH_HISTORY = 'epoch_history'
-    HISTORY_TRAIN_LOSS = "train_loss"
-    HISTORY_VAL_LOSS = "validation_loss"
+    LOSS = 'criterion_loss'
     HISTORY_LR = "learning_rate"
     TRAIN_LOADER = 'train_loader'
     TRAIN_BATCH = 'train_batch'

@@ -203,7 +203,9 @@ class Callback:
         pass
 
     def reset_parameters(self) -> None:
-        """Reset callback parameters when called.
+        """DEPRECATED: will be removed in future versions.
+        
+        Reset callback parameters when called.
 
         This function is called by `torchfitter.manager.Manager` class to 
         restart the initial parameters of self callback.

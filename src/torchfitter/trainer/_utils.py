@@ -65,13 +65,17 @@ class TrainerInternalState:
         self.__dict__[ParamsDict.DEVICE] = accelerator.device
         self.__dict__[ParamsDict.MODEL] = model
         self.__dict__[ParamsDict.EPOCH_HISTORY] = {
-            ParamsDict.HISTORY_TRAIN_LOSS: [],
-            ParamsDict.HISTORY_VAL_LOSS: [],
+            ParamsDict.LOSS: {
+                'train': [],
+                'validation': []
+            },
             ParamsDict.HISTORY_LR: []
         }
         self.__dict__[ParamsDict.BATCH_HISTORY] = {
-            ParamsDict.HISTORY_TRAIN_LOSS: [],
-            ParamsDict.HISTORY_VAL_LOSS: [],
+            ParamsDict.LOSS: {
+                'train': [],
+                'validation': []
+            },
             ParamsDict.HISTORY_LR: []
         }
 
@@ -159,23 +163,49 @@ class TrainerInternalState:
 
         return params
 
-    def update_history(self, is_batch=False, **kwargs) -> None:
+    def update_loss_history(
+        self, value: float, is_train: bool=True, is_batch: bool=False
+    ) -> None:
         """
-        Update history dictionary with the passed key-value pairs.
+        Update history loss dictionary with the passed value.
 
         Parameters
         ----------
-        kwargs : dict
-            Dictionary with keys to update.
+        value : float
+            Value to update the learning rate.
+        is_train : bool, optional, default: True
+            Whether to update the train history (True) or the validation 
+            history (False).
+        is_batch : bool, optional, default: False
+            Whether to update the batch history (True) or the epoch history 
+            (False).
         """
         # select batch or epoch
         hist_type = ParamsDict.BATCH_HISTORY if is_batch else ParamsDict.EPOCH_HISTORY
 
-        for key, value in kwargs.items():
-            if key not in self.__dict__[hist_type]:
-                raise KeyError(f"'{key}' not found in history dict.")
-            
-            self.__dict__[hist_type][key].append(value)
+        # select train or validation
+        tr_or_val = 'train' if is_train else 'validation'
+        
+        # update
+        self.__dict__[hist_type][ParamsDict.LOSS][tr_or_val].append(value)
+
+    def update_lr_history(self, value: float, is_batch: bool=False) -> None:
+        """
+        Update learning rate history with the passed value.
+
+        Parameters
+        ----------
+        value : float
+            Value to update the learning rate.
+        is_batch : bool, optional, default: False
+            Whether to update the batch history (True) or the epoch history 
+            (False).
+        """
+        # select batch or epoch
+        hist_type = ParamsDict.BATCH_HISTORY if is_batch else ParamsDict.EPOCH_HISTORY
+
+        # update lr
+        self.__dict__[hist_type][ParamsDict.HISTORY_LR].append(value)
 
     def update_params(self, **kwargs) -> None:
         """
@@ -205,13 +235,13 @@ class TrainerInternalState:
         hist_type = ParamsDict.BATCH_HISTORY if is_batch else ParamsDict.EPOCH_HISTORY
 
         # select train or validation
-        sub_key = 'train' if is_train else 'validation'
+        tr_or_val = 'train' if is_train else 'validation'
 
-        for key, value in kwargs.items():
-            if key not in self.__dict__[hist_type]:
-                raise KeyError(f"'{key}' not found in history dict.")
+        for metric, value in kwargs.items():
+            if metric not in self.__dict__[hist_type]:
+                raise KeyError(f"'{metric}' not found in history dict.")
 
-            self.__dict__[hist_type][key][sub_key].append(value)
+            self.__dict__[hist_type][metric][tr_or_val].append(value)
     
     def reset_parameters(self, reset_model=True):
         if reset_model:
@@ -231,6 +261,11 @@ class MetricsHandler:
     ----------
     metrics_list : list of torchmetrics.Metric
         A list of all the metrics to be computed.
+    criterion : torch.nn.Module
+        Loss function criterion used to optimize the model.
+
+    Attributes
+    ----------
     metric_names : list of str
         Names of the metrics. The names are automatically computed using 
         type(metric).__name__
@@ -241,8 +276,14 @@ class MetricsHandler:
        https://torchmetrics.readthedocs.io/en/latest/
     
     """
-    def __init__(self, metrics_list: List[torchmetrics.Metric]) -> None:
+    def __init__(
+        self,
+        metrics_list: List[torchmetrics.Metric],
+        criterion: torch.nn.Module
+    ) -> None:
+
         self.metrics_list = metrics_list
+        self.criterion = criterion
 
         # handle metrics if there are metrics
         self.__handle_metrics = False if self.metrics_list is None else True
