@@ -4,7 +4,14 @@ import logging
 import subprocess
 from typing import List
 from .base import Callback
+from torchfitter.utils import get_logger
 from torchfitter.conventions import ParamsDict
+
+from rich.progress import (
+    Progress,
+    BarColumn,
+    TimeRemainingColumn,
+)
 
 
 class EarlyStopping(Callback):
@@ -339,3 +346,120 @@ class GPUStats(Callback):
 
     def reset_parameters(self):
         pass # no parameters to reset
+
+
+class RichProgressBar(Callback):
+    """
+    This callback displays a progress bar to report the state of the training
+    process: on each epoch, a new bar will be created and stacked below the 
+    previous bars.
+
+    Metrics are logged using the library logger.
+    
+    Parameters
+    ----------
+    display_step : int
+        Number of epochs to wait to display the progress bar.
+    precision : int, optional, default: 2
+        Number of decimals to use in the log.
+    log_lr : bool, optional, default: False
+        Whether to log the learning rate (True) or not (False).
+    """
+    def __init__(
+        self, display_step: int=1, log_lr: bool=False, precision: int=5
+    ):
+        self.__check_installed()
+
+        self.display_step = display_step
+        self.prec = precision
+        self.log_lr = log_lr
+        self.logger = get_logger(name='bar', level=logging.INFO)
+
+    def __check_installed(self):
+        try:
+            import rich
+        except:
+            msg = (
+                "'rich' library could not be imported; make sure it is "
+                "correctly installed or install it using 'pip install rich'"
+            )
+            raise ImportError(msg)
+
+    def on_train_batch_end(self, params_dict: dict) -> None:
+        epoch = params_dict[ParamsDict.EPOCH_NUMBER]
+        if epoch % self.display_step == 0 or epoch == 1:
+            self.progress_bar.advance(self.epoch_task, 1)
+    
+    def on_validation_batch_end(self, params_dict: dict) -> None:
+        epoch = params_dict[ParamsDict.EPOCH_NUMBER]
+        if epoch % self.display_step == 0 or epoch == 1:
+            # advance bar
+            self.progress_bar.advance(self.epoch_task, 1)
+            
+    def on_epoch_start(self, params_dict: dict) -> None:
+        # gather necessary objects
+        train_loader = params_dict[ParamsDict.TRAIN_LOADER]
+        val_loader = params_dict[ParamsDict.VAL_LOADER]
+        epoch = params_dict[ParamsDict.EPOCH_NUMBER]
+        total_epochs = params_dict[ParamsDict.TOTAL_EPOCHS]
+        
+        # compute number of batches
+        n_elements = len(train_loader) + len(val_loader)
+        
+        if epoch % self.display_step == 0 or epoch == 1:
+            self.progress_bar = Progress(
+                "[progress.description]{task.description}",
+                "•",
+                BarColumn(),
+                "•",
+                "[progress.percentage]{task.percentage:>3.0f}%",
+                "•",
+                TimeRemainingColumn(),
+            )
+
+            self.epoch_task = self.progress_bar.add_task(
+                description=f'Epoch {epoch}/{total_epochs}',
+                total=n_elements,
+            )
+            self.progress_bar.start()
+    
+    def on_epoch_end(self, params_dict: dict) -> None:
+        epoch = params_dict[ParamsDict.EPOCH_NUMBER]
+        
+        if epoch % self.display_step == 0 or epoch == 1:
+            # update metrics
+            text = self.render_text(params_dict[ParamsDict.EPOCH_HISTORY])
+            self.logger.info(text)
+            self.progress_bar.stop()
+    
+    def render_text(self, update_dict):
+        text_format = ""
+        
+        for metric in update_dict:
+            if metric != ParamsDict.HISTORY_LR:
+                train_metric = update_dict[metric]['train'][-1]
+                val_metric = update_dict[metric]['train'][-1]
+
+                if text_format: # not empty
+                    text_format = (
+                        f"{text_format} • {metric} -> Train: "
+                        f"{train_metric:.{self.prec}f} | "
+                        f"Validation: {val_metric:.{self.prec}f}"
+                    )
+                else:
+                    text_format = (f"{metric} -> Train: "
+                        f"{train_metric:.{self.prec}f} | Validation: "
+                        f"{val_metric:.{self.prec}f}"
+                    )
+            else:
+                if self.log_lr:
+                    text_format = (
+                        f"{text_format} • LearningRate: "
+                        f"{update_dict[metric][-1]}"
+                    )
+        
+        return text_format
+
+    def reset_parameters(self) -> None:
+        pass
+    

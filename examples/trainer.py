@@ -17,7 +17,8 @@ from torchfitter.regularization import L1Regularization
 from torchfitter.callbacks import (
     LoggerCallback,
     EarlyStopping,
-    LearningRateScheduler
+    LearningRateScheduler,
+    RichProgressBar
 )
 
 # -----------------------------------------------------------------------------
@@ -48,13 +49,13 @@ criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=0.005)
 
 callbacks = [
-    LoggerCallback(update_step=100),
     EarlyStopping(patience=100, load_best=True),
     LearningRateScheduler(
         scheduler=optim.lr_scheduler.StepLR(
             optimizer, step_size=500, gamma=0.9
         )
-    )
+    ),
+    RichProgressBar(display_step=100, log_lr=False)
 ]
 
 metrics = [

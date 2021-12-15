@@ -404,12 +404,12 @@ class Trainer:
             predictions=out, target=labels
         )
 
+        # ----------- internal state updated ------------
         if metrics_single is not None:
             self.internal_state.update_metrics(
                 is_train=True, is_batch=True, **metrics_single
             )
 
-        # ----------- internal state updated ------------
         # update history
         self.internal_state.update_loss_history(
             value=loss.item(),

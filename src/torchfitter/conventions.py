@@ -75,7 +75,7 @@ class ParamsDict:
     ACCELERATOR = "accelerator"
     BATCH_HISTORY = 'batch_history'
     EPOCH_HISTORY = 'epoch_history'
-    LOSS = 'criterion_loss'
+    LOSS = 'loss'
     HISTORY_LR = "learning_rate"
     TRAIN_LOADER = 'train_loader'
     TRAIN_BATCH = 'train_batch'

@@ -107,7 +107,7 @@ trainer = Trainer(
     callbacks=[logger, early_stopping, scheduler]
 )
 
-trainer.fit(train_loader, val_loader, epochs=1000)
+history = trainer.fit(train_loader, val_loader, epochs=1000)
 ```
 
 Since `torchfitter` leverages the power of `accelerate`, the device management
