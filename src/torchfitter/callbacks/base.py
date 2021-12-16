@@ -1,6 +1,8 @@
 """ Base callbacks class """
 import logging
 
+__all__ = ["Callback", "CallbackHandler"]
+
 
 class Callback:
     """
@@ -19,6 +21,9 @@ class Callback:
     def on_train_step_start(self, params_dict: dict) -> None:
         """Called at the start of a training step.
 
+        A train step will involve the processing of all train batches included
+        in the train dataloader.
+
         Subclasses should override for any actions to run. The trainer ignores
         any returned values from this function.
 
@@ -32,6 +37,9 @@ class Callback:
     def on_train_step_end(self, params_dict: dict) -> None:
         """Called at the end of a training step.
 
+        A train step will involve the processing of all train batches included
+        in the train dataloader.
+
         Subclasses should override for any actions to run. The trainer ignores
         any returned values from this function.
 
@@ -42,8 +50,45 @@ class Callback:
         """
         pass
 
+    def on_train_batch_start(self, params_dict: dict) -> None:
+        """Called at the start of a batch train step.
+
+        A batch train step will involve the processing of all samples in a 
+        single train batch.
+
+        Subclasses should override for any actions to run. The trainer ignores
+        any returned values from this function.
+
+        Parameters
+        ----------
+        params_dict : dict
+            Dictionary containing the parameters of the training process.
+        
+        """
+        pass
+
+    def on_train_batch_end(self, params_dict: dict) -> None:
+        """Called at the end of a batch train step.
+
+        A batch train step will involve the processing of all samples in a 
+        single train batch.
+
+        Subclasses should override for any actions to run. The trainer ignores
+        any returned values from this function.
+
+        Parameters
+        ----------
+        params_dict : dict
+            Dictionary containing the parameters of the training process.
+        
+        """
+        pass
+
     def on_validation_step_start(self, params_dict: dict) -> None:
         """Called at the start of a validation step.
+
+        A validation step will involve the processing of all validation batches 
+        included in the validation dataloader.
 
         Subclasses should override for any actions to run. The trainer ignores
         any returned values from this function.
@@ -58,6 +103,9 @@ class Callback:
     def on_validation_step_end(self, params_dict: dict) -> None:
         """Called at the end of a validation step.
 
+        A validation step will involve the processing of all validation batches 
+        included in the validation dataloader.
+
         Subclasses should override for any actions to run. The trainer ignores
         any returned values from this function.
 
@@ -65,6 +113,40 @@ class Callback:
         ----------
         params_dict : dict
             Dictionary containing the parameters of the training process.
+        """
+        pass
+
+    def on_validation_batch_start(self, params_dict: dict) -> None:
+        """Called at the start of a batch validation step.
+
+        A batch validation step will involve the processing of all samples in a 
+        single validation batch.
+
+        Subclasses should override for any actions to run. The trainer ignores
+        any returned values from this function.
+
+        Parameters
+        ----------
+        params_dict : dict
+            Dictionary containing the parameters of the training process.
+        
+        """
+        pass
+
+    def on_validation_batch_end(self, params_dict: dict) -> None:
+        """Called at the end of a batch validation step.
+
+        A batch validation step will involve the processing of all samples in a 
+        single validation batch.
+
+        Subclasses should override for any actions to run. The trainer ignores
+        any returned values from this function.
+
+        Parameters
+        ----------
+        params_dict : dict
+            Dictionary containing the parameters of the training process.
+        
         """
         pass
 
@@ -121,7 +203,9 @@ class Callback:
         pass
 
     def reset_parameters(self) -> None:
-        """Reset callback parameters when called.
+        """DEPRECATED: will be removed in future versions.
+        
+        Reset callback parameters when called.
 
         This function is called by `torchfitter.manager.Manager` class to 
         restart the initial parameters of self callback.
@@ -152,23 +236,10 @@ class CallbackHandler(Callback):
 
         if callbacks_list is None:
             self.handle_callbacks = False
-
         elif not isinstance(callbacks_list, list):
             raise TypeError("Callbacks must be a list of callbacks")
 
-        # ensure callbacks are of trainer type
-        self._check_callback_type(callbacks_list=callbacks_list)
         self.callbacks_list = callbacks_list
-    
-    def _check_callback_type(self, callbacks_list: list):
-        if self.handle_callbacks:
-            for callback in callbacks_list:
-                if callback.callback_type != '<Trainer class>':
-                    raise ValueError(
-                        f"Trainer callback handler can only process callbacks of "
-                        "type '<Trainer class>' but {callback.callback_type} was"
-                        " passed."
-                    )
 
     def on_train_step_start(self, params_dict: dict) -> None:
         """Called at the start of a training step.
@@ -200,6 +271,44 @@ class CallbackHandler(Callback):
             for callback in self.callbacks_list:
                 callback.on_train_step_end(params_dict)
 
+    def on_train_batch_start(self, params_dict: dict) -> None:
+        """Called at the start of a batch train step.
+
+        A batch train step will involve the processing of all samples in a 
+        single train batch.
+
+        Subclasses should override for any actions to run. The trainer ignores
+        any returned values from this function.
+
+        Parameters
+        ----------
+        params_dict : dict
+            Dictionary containing the parameters of the training process.
+        
+        """
+        if self.handle_callbacks:
+            for callback in self.callbacks_list:
+                callback.on_train_batch_start(params_dict)
+
+    def on_train_batch_end(self, params_dict: dict) -> None:
+        """Called at the end of a batch train step.
+
+        A batch train step will involve the processing of all samples in a 
+        single train batch.
+
+        Subclasses should override for any actions to run. The trainer ignores
+        any returned values from this function.
+
+        Parameters
+        ----------
+        params_dict : dict
+            Dictionary containing the parameters of the training process.
+        
+        """
+        if self.handle_callbacks:
+            for callback in self.callbacks_list:
+                callback.on_train_batch_end(params_dict)
+
     def on_validation_step_start(self, params_dict: dict) -> None:
         """Called at the start of a validation step.
 
@@ -229,6 +338,44 @@ class CallbackHandler(Callback):
         if self.handle_callbacks:
             for callback in self.callbacks_list:
                 callback.on_validation_step_end(params_dict)
+
+    def on_validation_batch_start(self, params_dict: dict) -> None:
+        """Called at the start of a batch validation step.
+
+        A batch validation step will involve the processing of all samples in a 
+        single validation batch.
+
+        Subclasses should override for any actions to run. The trainer ignores
+        any returned values from this function.
+
+        Parameters
+        ----------
+        params_dict : dict
+            Dictionary containing the parameters of the training process.
+        
+        """
+        if self.handle_callbacks:
+            for callback in self.callbacks_list:
+                callback.on_validation_batch_start(params_dict)
+
+    def on_validation_batch_end(self, params_dict: dict) -> None:
+        """Called at the end of a batch validation step.
+
+        A batch validation step will involve the processing of all samples in a 
+        single validation batch.
+
+        Subclasses should override for any actions to run. The trainer ignores
+        any returned values from this function.
+
+        Parameters
+        ----------
+        params_dict : dict
+            Dictionary containing the parameters of the training process.
+        
+        """
+        if self.handle_callbacks:
+            for callback in self.callbacks_list:
+                callback.on_validation_batch_end(params_dict)
 
     def on_epoch_start(self, params_dict: dict) -> None:
         """Called at the start of an epoch.

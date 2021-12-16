@@ -21,9 +21,9 @@ setup(
     author='Alejandro Pérez-Sanjuán',
     python_requires='>=3.7,',
     install_requires=[
-        "tqdm",
         "numpy",
         "torchmetrics",
         "torch>=1.1.0",
+        "accelerate"
     ],
 )

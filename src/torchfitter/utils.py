@@ -1,9 +1,19 @@
 """ Utils functions. """
 
 import torch
+import logging
 import numpy as np
 from typing import Tuple, Union
 from torch.utils.data import Dataset
+
+__all__ = [
+    "DataWrapper",
+    "numpy_to_torch",
+    "check_model_on_cuda",
+    "FastTensorDataLoader",
+    "train_test_val_split"
+    "get_logger"
+]
 
 
 class DataWrapper(Dataset):
@@ -165,3 +175,40 @@ class FastTensorDataLoader:
 
     def __len__(self) -> int:
         return self.n_batches
+
+
+def train_test_val_split(X, y):
+    """
+    Splits the given dataset into train, validation and test sets.
+
+    Parameters
+    ----------
+    X : array-like
+    y : array-like
+
+    Returns
+    -------
+    """
+    raise NotImplementedError("func 'train_test_val_split' is not implemented")
+
+
+
+def get_logger(name: str, level: int) -> logging.Logger:
+    """
+    Generate a logger with the specified name and level.
+
+    Parameters
+    ----------
+    name : str
+        Logger name.
+    level : int
+        Logging level for the logger.
+
+    Returns
+    -------
+    logger : logging.Logger
+        Logger.
+    """
+    logger = logging.getLogger(name=name)
+    logger.setLevel(level=level)
+    return logger

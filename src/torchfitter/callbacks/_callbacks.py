@@ -4,7 +4,14 @@ import logging
 import subprocess
 from typing import List
 from .base import Callback
+from torchfitter.utils import get_logger
 from torchfitter.conventions import ParamsDict
+
+from rich.progress import (
+    Progress,
+    BarColumn,
+    TimeRemainingColumn,
+)
 
 
 class EarlyStopping(Callback):
@@ -181,73 +188,46 @@ class LearningRateScheduler(Callback):
 
     `LearningRateScheduler` provides an easy abstraction to schedule the
     learning rate of the optimizer by calling `scheduler.step()` after the
-    training step has been performed.
+    training step has been performed; i.e., `on_train_step_end`.
 
     Parameters
     ----------
-    scheduler : torch.optim.lr_scheduler
-        Torch learning rate scheduler.
-    metric : str, optional, default: None
-        Metric to read. Needed for some optimizers. See 
-        torchfitter.convetions.ParamsDict for available metrics.
+    scheduler : torch.optim.Scheduler
+        Scheduler use to perform the lr reduction.
+    metric : str, optional, default : torchfitter.conventions.ParamsDict.LOSS
+        Metric to track in order to reduce the learning rate. If you want to
+        use one of the passed metrics you must pass the class name. See 
+        examples section.
+    on_train : bool, optional, default: True
+        Whether to watch the train version of the metric (True) or the 
+        validation version of the metric (False)
+
+    Examples
+    --------
+    Assume we already have the `kwargs` for the trainer and the necessary
+    imports:
+
+    >>> import torchmetrics
+    >>> from torch.optim.lr_scheduler import ReduceLROnPlateau
+    >>> from torchfitter.callbacks import LearningRateScheduler
+    >>> sch = ReduceLROnPlateau(optimizer, factor=0.1, patience=50)
+    >>> lr_sch = LearningRateScheduler(scheduler=sch, metric='MeanSquaredError', on_train=False)
+    >>> metrics = [torchmetrics.MeanSquaredError]
+    >>> trainer = Trainer(callbacks=[lr_sch], metrics=metrics, **kwargs)
 
     References
     ----------
     ..[1] PyTorch - How to adjust learning rate
        https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate
-    """
 
-    def __init__(self, scheduler, metric=None):
+    """
+    def __init__(
+        self,
+        scheduler,
+        metric: str=ParamsDict.LOSS,
+        on_train: bool=True,
+    ):
         super(LearningRateScheduler, self).__init__()
-        self.scheduler = scheduler
-        self.metric = metric
-
-        # to restart callback state
-        self.__restart_dict = {
-            'metric': metric,
-            'scheduler': scheduler,
-            'scheduler_params': scheduler.state_dict().copy()
-        }
-
-    def __repr__(self) -> str:
-        return f"LearningRateScheduler(scheduler={self.scheduler}, metric={self.metric})"
-
-    def on_train_step_end(self, params_dict):
-        # TODO: this needs a redesign on the trainer_state size and how metrics are handled
-        if self.metric is None:
-            self.scheduler.step()
-        else:
-            metric = params_dict[self.metric]
-            self.scheduler.step(metric)
-
-    def reset_parameters(self) -> None:
-        for key, value in self.__restart_dict.items():
-            if key == 'scheduler_params':
-                self.__dict__['scheduler'].load_state_dict(value)
-            else:
-                self.__dict__[key] = value
-
-
-class ReduceLROnPlateau(Callback):
-    """Reduce learning rate when a metric has stopped improving.
-
-    You can select the metric to watch from the metrics available in the 
-    TrainerInternalState class.
-
-    Parameters
-    ----------
-    scheduler : torch.optim.Scheduler
-        Scheduler.
-    metric : str, optional, default : conventions.ParamsDict.TRAIN_LOSS
-        Metric to track in order to reduce the learning rate.
-    on_train : bool, optional, default: True
-        Required when using any of the metrics passed in the 'metrics' 
-        parameter from the Trainer class. If True, the selected metric will be
-        the metric value for the train set; if False, the selected metric will 
-        be the metric value for the validation set.
-    """
-    def __init__(self, scheduler, metric=ParamsDict.TRAIN_LOSS, on_train=True):
-        super(ReduceLROnPlateau, self).__init__()
 
         self.scheduler = scheduler
         self.metric = metric
@@ -258,18 +238,15 @@ class ReduceLROnPlateau(Callback):
 
     def __repr__(self) -> str:
         sch = type(self.scheduler).__name__
-        return f"ReduceLROnPlateau(scheduler={sch}, metric={self.metric})"
-        
-    def on_train_step_end(self, params_dict):
+        return f"LearningRateScheduler(scheduler={sch}, metric={self.metric})"
 
-        # TODO: this needs a redesign on the trainer_state size and how metrics are handled
-        key = 'train' if self.on_train else 'validation'
-
-        try:
-            metric = params_dict[self.metric]
-        except:
-            metric = params_dict[ParamsDict.HISTORY][self.metric][key][-1]
-        self.scheduler.step(metric)
+    def on_train_step_end(self, params_dict: dict) -> None:
+        if self.metric is not None:
+            key = 'train' if self.on_train else 'validation'
+            metric = params_dict[ParamsDict.EPOCH_HISTORY][self.metric][key][-1]
+            self.scheduler.step(metric)
+        else:
+            self.scheduler.step()
             
     def reset_parameters(self):
         for key, value in self.__restart_dict.items():
@@ -339,3 +316,120 @@ class GPUStats(Callback):
 
     def reset_parameters(self):
         pass # no parameters to reset
+
+
+class RichProgressBar(Callback):
+    """
+    This callback displays a progress bar to report the state of the training
+    process: on each epoch, a new bar will be created and stacked below the 
+    previous bars.
+
+    Metrics are logged using the library logger.
+    
+    Parameters
+    ----------
+    display_step : int
+        Number of epochs to wait to display the progress bar.
+    precision : int, optional, default: 2
+        Number of decimals to use in the log.
+    log_lr : bool, optional, default: False
+        Whether to log the learning rate (True) or not (False).
+    """
+    def __init__(
+        self, display_step: int=1, log_lr: bool=False, precision: int=5
+    ):
+        self.__check_installed()
+
+        self.display_step = display_step
+        self.prec = precision
+        self.log_lr = log_lr
+        self.logger = get_logger(name='bar', level=logging.INFO)
+
+    def __check_installed(self):
+        try:
+            import rich
+        except:
+            msg = (
+                "'rich' library could not be imported; make sure it is "
+                "correctly installed or install it using 'pip install rich'"
+            )
+            raise ImportError(msg)
+
+    def on_train_batch_end(self, params_dict: dict) -> None:
+        epoch = params_dict[ParamsDict.EPOCH_NUMBER]
+        if epoch % self.display_step == 0 or epoch == 1:
+            self.progress_bar.advance(self.epoch_task, 1)
+    
+    def on_validation_batch_end(self, params_dict: dict) -> None:
+        epoch = params_dict[ParamsDict.EPOCH_NUMBER]
+        if epoch % self.display_step == 0 or epoch == 1:
+            # advance bar
+            self.progress_bar.advance(self.epoch_task, 1)
+            
+    def on_epoch_start(self, params_dict: dict) -> None:
+        # gather necessary objects
+        train_loader = params_dict[ParamsDict.TRAIN_LOADER]
+        val_loader = params_dict[ParamsDict.VAL_LOADER]
+        epoch = params_dict[ParamsDict.EPOCH_NUMBER]
+        total_epochs = params_dict[ParamsDict.TOTAL_EPOCHS]
+        
+        # compute number of batches
+        n_elements = len(train_loader) + len(val_loader)
+        
+        if epoch % self.display_step == 0 or epoch == 1:
+            self.progress_bar = Progress(
+                "[progress.description]{task.description}",
+                "•",
+                BarColumn(),
+                "•",
+                "[progress.percentage]{task.percentage:>3.0f}%",
+                "•",
+                TimeRemainingColumn(),
+            )
+
+            self.epoch_task = self.progress_bar.add_task(
+                description=f'Epoch {epoch}/{total_epochs}',
+                total=n_elements,
+            )
+            self.progress_bar.start()
+    
+    def on_epoch_end(self, params_dict: dict) -> None:
+        epoch = params_dict[ParamsDict.EPOCH_NUMBER]
+        
+        if epoch % self.display_step == 0 or epoch == 1:
+            # update metrics
+            text = self.render_text(params_dict[ParamsDict.EPOCH_HISTORY])
+            self.logger.info(text)
+            self.progress_bar.stop()
+    
+    def render_text(self, update_dict):
+        text_format = ""
+        
+        for metric in update_dict:
+            if metric != ParamsDict.HISTORY_LR:
+                train_metric = update_dict[metric]['train'][-1]
+                val_metric = update_dict[metric]['train'][-1]
+
+                if text_format: # not empty
+                    text_format = (
+                        f"{text_format} • {metric} -> Train: "
+                        f"{train_metric:.{self.prec}f} | "
+                        f"Validation: {val_metric:.{self.prec}f}"
+                    )
+                else:
+                    text_format = (f"{metric} -> Train: "
+                        f"{train_metric:.{self.prec}f} | Validation: "
+                        f"{val_metric:.{self.prec}f}"
+                    )
+            else:
+                if self.log_lr:
+                    text_format = (
+                        f"{text_format} • LearningRate: "
+                        f"{update_dict[metric][-1]}"
+                    )
+        
+        return text_format
+
+    def reset_parameters(self) -> None:
+        pass
+    

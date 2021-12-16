@@ -31,8 +31,6 @@ def train_config():
         weights=torch.Tensor([[-0.065]]), 
         biases=torch.Tensor([0.5634])
     )
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    model.to(device)
     
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters())
@@ -63,7 +61,7 @@ def train_config():
     train_loader = DataLoader(train_wrapper, batch_size=32)
     val_loader = DataLoader(val_wrapper, batch_size=32)
 
-    return train_loader, val_loader, model, criterion, optimizer, device
+    return train_loader, val_loader, model, criterion, optimizer
 
 
 def test_trainer(train_config):
@@ -74,25 +72,23 @@ def test_trainer(train_config):
         model,
         criterion,
         optimizer,
-        device
     ) = train_config
 
     trainer = Trainer(
         model=model,
         criterion=criterion,
         optimizer=optimizer,
-        device=device,
         mixed_precision=False
     )
     
     # fitting process
-    trainer.fit(train_loader, val_loader, epochs=100)
+    history = trainer.fit(train_loader, val_loader, epochs=100)
 
     obtained_train_loss = np.array(
-        trainer.internal_state.get_state_dict()[ParamsDict.HISTORY][ParamsDict.HISTORY_TRAIN_LOSS]
+        history[ParamsDict.EPOCH_HISTORY][ParamsDict.LOSS]['train']
     )
     obtained_val_loss = np.array(
-        trainer.internal_state.get_state_dict()[ParamsDict.HISTORY][ParamsDict.HISTORY_VAL_LOSS]
+        history[ParamsDict.EPOCH_HISTORY][ParamsDict.LOSS]['validation']
     )
 
     msg = "Train loss did not strictly decrease"
@@ -110,25 +106,127 @@ def test_trainer_mixed_precision(train_config):
         model,
         criterion,
         optimizer,
-        device
     ) = train_config
 
     trainer = Trainer(
         model=model,
         criterion=criterion,
         optimizer=optimizer,
-        device=device,
         mixed_precision=True
     )
     
     # fitting process
-    trainer.fit(train_loader, val_loader, epochs=100)
+    history = trainer.fit(train_loader, val_loader, epochs=100)
 
     obtained_train_loss = np.array(
-        trainer.internal_state.get_state_dict()[ParamsDict.HISTORY][ParamsDict.HISTORY_TRAIN_LOSS]
+        history[ParamsDict.EPOCH_HISTORY][ParamsDict.LOSS]['train']
     )
     obtained_val_loss = np.array(
-        trainer.internal_state.get_state_dict()[ParamsDict.HISTORY][ParamsDict.HISTORY_VAL_LOSS]
+        history[ParamsDict.EPOCH_HISTORY][ParamsDict.LOSS]['validation']
+    )
+
+    msg = "Train loss did not strictly decrease"
+    assert check_monotonically_decreasing(obtained_train_loss, strict=True), msg
+
+    msg = "Validation loss did not strictly decrease"
+    assert check_monotonically_decreasing(obtained_val_loss, strict=True), msg
+
+
+def test_trainer_gradient_accumulation(train_config):
+    (
+        train_loader,
+        val_loader,
+        model,
+        criterion,
+        optimizer,
+    ) = train_config
+
+    trainer = Trainer(
+        model=model,
+        criterion=criterion,
+        optimizer=optimizer,
+        accumulate_iter=4,
+    )
+    
+    # fitting process
+    history = trainer.fit(train_loader, val_loader, epochs=100)
+
+    obtained_train_loss = np.array(
+        history[ParamsDict.EPOCH_HISTORY][ParamsDict.LOSS]['train']
+    )
+    obtained_val_loss = np.array(
+        history[ParamsDict.EPOCH_HISTORY][ParamsDict.LOSS]['validation']
+    )
+
+    msg = "Train loss did not strictly decrease"
+    assert check_monotonically_decreasing(obtained_train_loss, strict=True), msg
+
+    msg = "Validation loss did not strictly decrease"
+    assert check_monotonically_decreasing(obtained_val_loss, strict=True), msg
+
+
+def test_trainer_gradient_clipping(train_config):
+    (
+        train_loader,
+        val_loader,
+        model,
+        criterion,
+        optimizer,
+    ) = train_config
+
+    trainer = Trainer(
+        model=model,
+        criterion=criterion,
+        optimizer=optimizer,
+        mixed_precision=True,
+        gradient_clipping='norm',
+        gradient_clipping_kwargs={'max_norm': 1.0, 'norm_type':2.0},
+    )
+    
+    # fitting process
+    history = trainer.fit(train_loader, val_loader, epochs=100)
+
+    obtained_train_loss = np.array(
+        history[ParamsDict.EPOCH_HISTORY][ParamsDict.LOSS]['train']
+    )
+    obtained_val_loss = np.array(
+        history[ParamsDict.EPOCH_HISTORY][ParamsDict.LOSS]['validation']
+    )
+
+    msg = "Train loss did not strictly decrease"
+    assert check_monotonically_decreasing(obtained_train_loss, strict=True), msg
+
+    msg = "Validation loss did not strictly decrease"
+    assert check_monotonically_decreasing(obtained_val_loss, strict=True), msg
+
+
+def test_trainer_all_features(train_config):
+    (
+        train_loader,
+        val_loader,
+        model,
+        criterion,
+        optimizer,
+    ) = train_config
+
+    trainer = Trainer(
+        model=model,
+        criterion=criterion,
+        optimizer=optimizer,
+        mixed_precision=True,
+        accumulate_iter=4,
+        gradient_clipping='norm',
+        gradient_clipping_kwargs={'max_norm': 1.0, 'norm_type':2.0},
+    )
+    
+    # fitting process
+    history = trainer.fit(train_loader, val_loader, epochs=100)
+
+    obtained_train_loss = np.array(
+        history[ParamsDict.EPOCH_HISTORY][ParamsDict.LOSS]['train']
+    )
+    obtained_val_loss = np.array(
+        history[ParamsDict.EPOCH_HISTORY][ParamsDict.LOSS]['validation']
     )
 
     msg = "Train loss did not strictly decrease"
