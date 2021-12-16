@@ -26,9 +26,7 @@ one would normally do in PyTorch.
 
 >>> import torch.nn as nn
 >>> import torch.optim as optim
->>> device = "cuda" if torch.cuda.is_available() else "cpu"
 >>> model = nn.Linear(in_features=1, out_features=1)
->>> model.to(device) # do this before declaring the optimizer
 >>> criterion = nn.MSELoss()
 >>> optimizer = optim.Adam(model.parameters())
 
@@ -55,28 +53,21 @@ configuration we have been creating:
 
 >>> from torchfitter.trainer import Trainer
 >>> trainer = Trainer(
-... model=model, 
-... criterion=criterion,
-... optimizer=optimizer, 
-... regularizer=regularizer,
-... device=device,
-... callbacks=[logger, early_stopping, scheduler],
-... mixed_precision=True, # only works with GPU
-... )
-
-Make sure to pass the device since `torchfitter` will grab whatever is 
-available internally, which can cause problems when processing tensors from 
-different devices.
+>>> ... model=model, 
+>>> ... criterion=criterion,
+>>> ... optimizer=optimizer, 
+>>> ... regularizer=regularizer,
+>>> ... device=device,
+>>> ... callbacks=[logger, early_stopping],
+>>> ... mixed_precision=True, # only works with GPU
+>>> ... )
 
 Once the trainer is created, we only need to call `fit` to optimize our model:
 
->>> trainer.fit(train_loader, val_loader, epochs=1000)
+>>> history = trainer.fit(train_loader, val_loader, epochs=1000)
 
-The training information you get will depend on your callbacks. A progress bar 
-will also be displayed unless `disable_pbar` is set to `True` in the `fit` 
-method.
-
-After the optimization process ends the model is ready to use.
+The training information you get will depend on your callbacks. After the 
+optimization process ends the model is ready to use.
 
 
 Callbacks System
@@ -88,17 +79,6 @@ loop.
 
 This callback system **was not** designed by me. It is somewhat a port from the
 Keras callbacks system.
-
-The callbacks API currently has these methods to interact with the model:
-
-- **on_train_step_start**: called at the start of a training step.
-- **on_train_step_end**: called at the end of a training step.
-- **on_validation_step_start**:: called at the start of a validation step.
-- **on_validation_step_end**: called at the end of a validation step.
-- **on_epoch_start**: called at the start of an epoch.
-- **on_epoch_end**: called at the end of an epoch.
-- **on_fit_start**: called at the start of the fitting process.
-- **on_fit_end**: called at the end of the fitting process.
 
 You can create your own callbacks by subclassing the Base callback and 
 overriding the methods where you want to perform something.
@@ -128,20 +108,6 @@ list of objects available can be known using:
 
 >>> from torchfitter.conventions import ParamsDict
 >>> [(x, getattr(ParamsDict, x)) for x in ParamsDict.__dict__ if not x.startswith('__')]
-... [('TRAIN_LOSS', 'training_loss'),
-... ('VAL_LOSS', 'validation_loss'),
-... ('EPOCH_TIME', 'epoch_time'),
-... ('EPOCH_NUMBER', 'epoch_number'),
-... ('TOTAL_EPOCHS', 'total_epochs'),
-... ('TOTAL_TIME', 'total_time'),
-... ('STOP_TRAINING', 'stop_training'),
-... ('DEVICE', 'device'),
-... ('MODEL', 'model'),
-... ('HISTORY', 'history'),
-... ('HISTORY_TRAIN_LOSS', 'train_loss'),
-... ('HISTORY_VAL_LOSS', 'validation_loss'),
-... ('HISTORY_LR', 'learning_rate'),
-... ('PROG_BAR', 'progress_bar')]
 
 And you can also check the doc to understand the meaning of each one of the 
 parameters:
@@ -223,7 +189,6 @@ Let's see an example:
 
     # define experiment function
     def experiment_func(seed, folder_name):
-        device = "cuda" if torch.cuda.is_available() else "cpu"
         subfolder = folder_name / f"experiment_{seed}"
         
         if f"experiment_{seed}" not in os.listdir(folder_name):
@@ -264,7 +229,6 @@ Let's see an example:
         # ---------------------------------------------------------------------
         # model creatiom
         model = nn.Linear(in_features=1, out_features=1)
-        model.to(device)
         
         # optimization settings 
         regularizer = L1Regularization(regularization_rate=0.01, biases=False)
@@ -286,12 +250,11 @@ Let's see an example:
             criterion=criterion,
             optimizer=optimizer, 
             regularizer=regularizer,
-            device=device,
             callbacks=callbacks,
         )
         
         # run training
-        trainer.fit(train_loader, val_loader, 5000, disable_pbar=True)
+        history = trainer.fit(train_loader, val_loader, 5000, disable_pbar=True)
         
         # ---------------------------------------------------------------------
         # model state
@@ -302,7 +265,7 @@ Let's see an example:
         
         # history
         io.save_pickle(
-            obj=trainer.internal_state.get_state_dict()['history'],
+            obj=history,
             path=subfolder / 'history.pkl'
         )
 

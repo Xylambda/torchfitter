@@ -3,7 +3,7 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
-<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="torchfitter package" href="torchfitter.html" /><link rel="prev" title="&lt;no title&gt;" href="install.html" />
+<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="torchfitter package" href="torchfitter.html" /><link rel="prev" title="Installation" href="install.html" />
 
     <meta name="generator" content="sphinx-4.1.2, furo 2021.07.31.beta41"/>
         <title>Quick Start - torchfitter documentation</title>
@@ -154,6 +154,7 @@
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Quick Start</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="torchfitter.html">torchfitter package</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l2 has-children"><a class="reference internal" href="torchfitter.callbacks.html">torchfitter.callbacks package</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
@@ -250,9 +251,7 @@ that here.</p>
 one would normally do in PyTorch.</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">torch.nn</span> <span class="k">as</span> <span class="nn">nn</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">torch.optim</span> <span class="k">as</span> <span class="nn">optim</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">device</span> <span class="o">=</span> <span class="s2">"cuda"</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="s2">"cpu"</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">in_features</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">out_features</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span> <span class="c1"># do this before declaring the optimizer</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">criterion</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">MSELoss</span><span class="p">()</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">optimizer</span> <span class="o">=</span> <span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">())</span>
 </pre></div>
@@ -278,27 +277,22 @@ to the trainer object as we will see in a moment.</p>
 configuration we have been creating:</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">torchfitter.trainer</span> <span class="kn">import</span> <span class="n">Trainer</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">trainer</span> <span class="o">=</span> <span class="n">Trainer</span><span class="p">(</span>
-<span class="gp">... </span><span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
-<span class="gp">... </span><span class="n">criterion</span><span class="o">=</span><span class="n">criterion</span><span class="p">,</span>
-<span class="gp">... </span><span class="n">optimizer</span><span class="o">=</span><span class="n">optimizer</span><span class="p">,</span>
-<span class="gp">... </span><span class="n">regularizer</span><span class="o">=</span><span class="n">regularizer</span><span class="p">,</span>
-<span class="gp">... </span><span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
-<span class="gp">... </span><span class="n">callbacks</span><span class="o">=</span><span class="p">[</span><span class="n">logger</span><span class="p">,</span> <span class="n">early_stopping</span><span class="p">,</span> <span class="n">scheduler</span><span class="p">],</span>
-<span class="gp">... </span><span class="n">mixed_precision</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="c1"># only works with GPU</span>
-<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="o">...</span> <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="o">...</span> <span class="n">criterion</span><span class="o">=</span><span class="n">criterion</span><span class="p">,</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="o">...</span> <span class="n">optimizer</span><span class="o">=</span><span class="n">optimizer</span><span class="p">,</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="o">...</span> <span class="n">regularizer</span><span class="o">=</span><span class="n">regularizer</span><span class="p">,</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="o">...</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="o">...</span> <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span><span class="n">logger</span><span class="p">,</span> <span class="n">early_stopping</span><span class="p">],</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="o">...</span> <span class="n">mixed_precision</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="c1"># only works with GPU</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="o">...</span> <span class="p">)</span>
 </pre></div>
 </div>
-<p>Make sure to pass the device since <cite>torchfitter</cite> will grab whatever is
-available internally, which can cause problems when processing tensors from
-different devices.</p>
 <p>Once the trainer is created, we only need to call <cite>fit</cite> to optimize our model:</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">trainer</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_loader</span><span class="p">,</span> <span class="n">val_loader</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">history</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_loader</span><span class="p">,</span> <span class="n">val_loader</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The training information you get will depend on your callbacks. A progress bar
-will also be displayed unless <cite>disable_pbar</cite> is set to <cite>True</cite> in the <cite>fit</cite>
-method.</p>
-<p>After the optimization process ends the model is ready to use.</p>
+<p>The training information you get will depend on your callbacks. After the
+optimization process ends the model is ready to use.</p>
 </section>
 <section id="callbacks-system">
 <h2>Callbacks System<a class="headerlink" href="#callbacks-system" title="Permalink to this headline">¶</a></h2>
@@ -307,17 +301,6 @@ provide different interaction points, at different stages in the optimization
 loop.</p>
 <p>This callback system <strong>was not</strong> designed by me. It is somewhat a port from the
 Keras callbacks system.</p>
-<p>The callbacks API currently has these methods to interact with the model:</p>
-<ul class="simple">
-<li><p><strong>on_train_step_start</strong>: called at the start of a training step.</p></li>
-<li><p><strong>on_train_step_end</strong>: called at the end of a training step.</p></li>
-<li><p><strong>on_validation_step_start</strong>:: called at the start of a validation step.</p></li>
-<li><p><strong>on_validation_step_end</strong>: called at the end of a validation step.</p></li>
-<li><p><strong>on_epoch_start</strong>: called at the start of an epoch.</p></li>
-<li><p><strong>on_epoch_end</strong>: called at the end of an epoch.</p></li>
-<li><p><strong>on_fit_start</strong>: called at the start of the fitting process.</p></li>
-<li><p><strong>on_fit_end</strong>: called at the end of the fitting process.</p></li>
-</ul>
 <p>You can create your own callbacks by subclassing the Base callback and
 overriding the methods where you want to perform something.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">torch</span>
@@ -343,20 +326,6 @@ different metrics and objects that you can use to create certain logic. The
 list of objects available can be known using:</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">torchfitter.conventions</span> <span class="kn">import</span> <span class="n">ParamsDict</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="p">[(</span><span class="n">x</span><span class="p">,</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">ParamsDict</span><span class="p">,</span> <span class="n">x</span><span class="p">))</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">ParamsDict</span><span class="o">.</span><span class="vm">__dict__</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">x</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">'__'</span><span class="p">)]</span>
-<span class="gp">... </span><span class="p">[(</span><span class="s1">'TRAIN_LOSS'</span><span class="p">,</span> <span class="s1">'training_loss'</span><span class="p">),</span>
-<span class="gp">... </span><span class="p">(</span><span class="s1">'VAL_LOSS'</span><span class="p">,</span> <span class="s1">'validation_loss'</span><span class="p">),</span>
-<span class="gp">... </span><span class="p">(</span><span class="s1">'EPOCH_TIME'</span><span class="p">,</span> <span class="s1">'epoch_time'</span><span class="p">),</span>
-<span class="gp">... </span><span class="p">(</span><span class="s1">'EPOCH_NUMBER'</span><span class="p">,</span> <span class="s1">'epoch_number'</span><span class="p">),</span>
-<span class="gp">... </span><span class="p">(</span><span class="s1">'TOTAL_EPOCHS'</span><span class="p">,</span> <span class="s1">'total_epochs'</span><span class="p">),</span>
-<span class="gp">... </span><span class="p">(</span><span class="s1">'TOTAL_TIME'</span><span class="p">,</span> <span class="s1">'total_time'</span><span class="p">),</span>
-<span class="gp">... </span><span class="p">(</span><span class="s1">'STOP_TRAINING'</span><span class="p">,</span> <span class="s1">'stop_training'</span><span class="p">),</span>
-<span class="gp">... </span><span class="p">(</span><span class="s1">'DEVICE'</span><span class="p">,</span> <span class="s1">'device'</span><span class="p">),</span>
-<span class="gp">... </span><span class="p">(</span><span class="s1">'MODEL'</span><span class="p">,</span> <span class="s1">'model'</span><span class="p">),</span>
-<span class="gp">... </span><span class="p">(</span><span class="s1">'HISTORY'</span><span class="p">,</span> <span class="s1">'history'</span><span class="p">),</span>
-<span class="gp">... </span><span class="p">(</span><span class="s1">'HISTORY_TRAIN_LOSS'</span><span class="p">,</span> <span class="s1">'train_loss'</span><span class="p">),</span>
-<span class="gp">... </span><span class="p">(</span><span class="s1">'HISTORY_VAL_LOSS'</span><span class="p">,</span> <span class="s1">'validation_loss'</span><span class="p">),</span>
-<span class="gp">... </span><span class="p">(</span><span class="s1">'HISTORY_LR'</span><span class="p">,</span> <span class="s1">'learning_rate'</span><span class="p">),</span>
-<span class="gp">... </span><span class="p">(</span><span class="s1">'PROG_BAR'</span><span class="p">,</span> <span class="s1">'progress_bar'</span><span class="p">)]</span>
 </pre></div>
 </div>
 <p>And you can also check the doc to understand the meaning of each one of the
@@ -429,7 +398,6 @@ to save the experiment.</p>
 
 <span class="c1"># define experiment function</span>
 <span class="k">def</span> <span class="nf">experiment_func</span><span class="p">(</span><span class="n">seed</span><span class="p">,</span> <span class="n">folder_name</span><span class="p">):</span>
-    <span class="n">device</span> <span class="o">=</span> <span class="s2">"cuda"</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="s2">"cpu"</span>
     <span class="n">subfolder</span> <span class="o">=</span> <span class="n">folder_name</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"experiment_</span><span class="si">{</span><span class="n">seed</span><span class="si">}</span><span class="s2">"</span>
 
     <span class="k">if</span> <span class="sa">f</span><span class="s2">"experiment_</span><span class="si">{</span><span class="n">seed</span><span class="si">}</span><span class="s2">"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">folder_name</span><span class="p">):</span>
@@ -470,7 +438,6 @@ to save the experiment.</p>
     <span class="c1"># ---------------------------------------------------------------------</span>
     <span class="c1"># model creatiom</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">in_features</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">out_features</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-    <span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
 
     <span class="c1"># optimization settings</span>
     <span class="n">regularizer</span> <span class="o">=</span> <span class="n">L1Regularization</span><span class="p">(</span><span class="n">regularization_rate</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">biases</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
@@ -492,12 +459,11 @@ to save the experiment.</p>
         <span class="n">criterion</span><span class="o">=</span><span class="n">criterion</span><span class="p">,</span>
         <span class="n">optimizer</span><span class="o">=</span><span class="n">optimizer</span><span class="p">,</span>
         <span class="n">regularizer</span><span class="o">=</span><span class="n">regularizer</span><span class="p">,</span>
-        <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
         <span class="n">callbacks</span><span class="o">=</span><span class="n">callbacks</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="c1"># run training</span>
-    <span class="n">trainer</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_loader</span><span class="p">,</span> <span class="n">val_loader</span><span class="p">,</span> <span class="mi">5000</span><span class="p">,</span> <span class="n">disable_pbar</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">history</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_loader</span><span class="p">,</span> <span class="n">val_loader</span><span class="p">,</span> <span class="mi">5000</span><span class="p">,</span> <span class="n">disable_pbar</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
     <span class="c1"># ---------------------------------------------------------------------</span>
     <span class="c1"># model state</span>
@@ -508,7 +474,7 @@ to save the experiment.</p>
 
     <span class="c1"># history</span>
     <span class="n">io</span><span class="o">.</span><span class="n">save_pickle</span><span class="p">(</span>
-        <span class="n">obj</span><span class="o">=</span><span class="n">trainer</span><span class="o">.</span><span class="n">internal_state</span><span class="o">.</span><span class="n">get_state_dict</span><span class="p">()[</span><span class="s1">'history'</span><span class="p">],</span>
+        <span class="n">obj</span><span class="o">=</span><span class="n">history</span><span class="p">,</span>
         <span class="n">path</span><span class="o">=</span><span class="n">subfolder</span> <span class="o">/</span> <span class="s1">'history.pkl'</span>
     <span class="p">)</span>
 
@@ -547,7 +513,7 @@ to save the experiment.</p>
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">&lt;no title&gt;</div>
+                <div class="title">Installation</div>
                 
               </div>
             </a>
