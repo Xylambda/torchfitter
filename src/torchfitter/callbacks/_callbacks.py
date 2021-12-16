@@ -224,7 +224,7 @@ class LearningRateScheduler(Callback):
     def __init__(
         self,
         scheduler,
-        metric: str=ParamsDict.TRAIN_LOSS,
+        metric: str=ParamsDict.LOSS,
         on_train: bool=True,
     ):
         super(LearningRateScheduler, self).__init__()
