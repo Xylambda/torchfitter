@@ -15,7 +15,6 @@ from torchfitter.conventions import ParamsDict
 from sklearn.model_selection import train_test_split
 from torchfitter.regularization import L1Regularization
 from torchfitter.callbacks import (
-    LoggerCallback,
     EarlyStopping,
     LearningRateScheduler,
     RichProgressBar
@@ -53,7 +52,9 @@ callbacks = [
     LearningRateScheduler(
         scheduler=optim.lr_scheduler.StepLR(
             optimizer, step_size=500, gamma=0.9
-        )
+        ),
+        metric=None, #ParamsDict.LOSS, # use loss criterion
+        on_train=True
     ),
     RichProgressBar(display_step=100, log_lr=False)
 ]

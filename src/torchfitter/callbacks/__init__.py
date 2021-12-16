@@ -5,7 +5,6 @@ from ._callbacks import (
     EarlyStopping,
     LoggerCallback,
     LearningRateScheduler,
-    ReduceLROnPlateau,
     GPUStats,
     RichProgressBar
 )

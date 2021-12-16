@@ -107,7 +107,7 @@ class Trainer:
 
         # ----- attributes -----
         self.internal_state = TrainerInternalState(
-            model=self.model, accelerator=self.accelerator
+            model=self.model, accelerator=self.accelerator, optimizer=optimizer
         )
         self.callback_handler = CallbackHandler(
             callbacks_list=self.callbacks_list
@@ -191,16 +191,6 @@ class Trainer:
             self.callback_handler.on_validation_step_end(self.internal_state.get_state_dict())
 
             # -------- update internal state to track training --------
-            self.internal_state.update_loss_history(
-                value=tr_loss,
-                is_train=True,
-                is_batch=False
-            )
-            self.internal_state.update_loss_history(
-                value=val_loss,
-                is_train=False,
-                is_batch=False
-            )
             self.internal_state.update_lr_history(
                 value=self.optimizer.param_groups[0]["lr"],
                 is_batch=False
@@ -326,20 +316,16 @@ class Trainer:
 
         Returns
         -------
-        float
+        epoch_loss : float
             Mean loss of the batch.
         """
         self.model.train()
 
         losses = []  # loss as mean of batch losses
         for batch_idx, batch in enumerate(loader):
-            self.callback_handler.on_train_batch_start(
-                self.internal_state.get_state_dict()
-            )
+            self.callback_handler.on_train_batch_start(self.internal_state.get_state_dict())
             loss = self.batch_train_step(batch_index=batch_idx, batch=batch)
-            self.callback_handler.on_train_batch_end(
-                self.internal_state.get_state_dict()
-            )
+            self.callback_handler.on_train_batch_end(self.internal_state.get_state_dict())
             losses.append(loss.item())
 
         # compute accumulated metrics (metric.compute())
@@ -350,9 +336,16 @@ class Trainer:
                 is_train=True, is_batch=False, **metrics_accumulated
             )
 
+        epoch_loss = statistics.mean(losses)
+        self.internal_state.update_loss_history(
+            value=epoch_loss,
+            is_train=True,
+            is_batch=False
+        )
+
         # reset metrics
         self.metrics_handler.reset_metrics()
-        return statistics.mean(losses)
+        return epoch_loss
 
     def batch_train_step(
         self,
@@ -446,7 +439,7 @@ class Trainer:
 
         Returns
         -------
-        float
+        epoch_loss : float
             Mean loss of the batch.
         """
         self.model.eval()
@@ -467,10 +460,17 @@ class Trainer:
                     is_train=False, **metrics_accumulated
                 )
 
+            epoch_loss = statistics.mean(losses)
+            self.internal_state.update_loss_history(
+                value=epoch_loss,
+                is_train=False,
+                is_batch=False
+            )
+
             # reset metrics
             self.metrics_handler.reset_metrics()
 
-        return statistics.mean(losses)
+        return epoch_loss
 
     def batch_validation_step(
         self, batch_index, batch: Tuple[torch.Tensor, torch.Tensor]

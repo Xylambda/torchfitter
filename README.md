@@ -121,8 +121,8 @@ from torchfitter.trainer import Trainer
 
 accelerator = Accelerator(...)
 trainer = Trainer(
-    **kwargs,
-    accelerator=accelerator
+    accelerator=accelerator,
+    **kwargs
 )
 ```
 

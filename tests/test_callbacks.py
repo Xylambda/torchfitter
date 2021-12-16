@@ -21,7 +21,8 @@ from torchfitter.callbacks import (
     LoggerCallback,
     LearningRateScheduler,
     ReduceLROnPlateau,
-    GPUStats
+    GPUStats,
+    RichProgressBar
 )
 
 from torchfitter.callbacks.base import CallbackHandler, Callback
@@ -192,6 +193,11 @@ def test_reduce_lr_on_plateau():
 
 @pytest.mark.xfail
 def test_gpu_stats():
+    pass
+
+
+@pytest.mark.xfail
+def test_rich_progress_bar():
     pass
 
 

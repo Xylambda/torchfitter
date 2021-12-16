@@ -16,6 +16,8 @@ class TrainerInternalState:
         The model to train.
     accelerator : accelerate.Accelerator
         Accelerator object.
+    optimizer : torch.optim.Optimizer
+        Algorithm used to optimize the model.
 
     Attributes
     ----------
@@ -47,10 +49,12 @@ class TrainerInternalState:
     progress_bar : tqdm.tqdm
         Progress bar from tqdm library.
     """
-    def __init__(self, model, accelerator) -> None:
-        self.___initialize_dict(model=model, accelerator=accelerator)
+    def __init__(self, model, accelerator, optimizer) -> None:
+        self.___initialize_dict(
+            model=model, accelerator=accelerator, optimizer=optimizer
+        )
     
-    def ___initialize_dict(self, model, accelerator):
+    def ___initialize_dict(self, model, accelerator, optimizer):
         """
         Helper function that initializes all attributes.
         """
@@ -64,6 +68,7 @@ class TrainerInternalState:
         self.__dict__[ParamsDict.ACCELERATOR] = accelerator
         self.__dict__[ParamsDict.DEVICE] = accelerator.device
         self.__dict__[ParamsDict.MODEL] = model
+        self.__dict__[ParamsDict.OPTIMIZER] = optimizer
         self.__dict__[ParamsDict.EPOCH_HISTORY] = {
             ParamsDict.LOSS: {
                 'train': [],
