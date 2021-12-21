@@ -1,5 +1,6 @@
 """ Base callbacks class """
 import logging
+from torchfitter.utils.convenience import get_logger
 
 __all__ = ["Callback", "CallbackHandler"]
 
@@ -8,6 +9,11 @@ class Callback:
     """
     Base callbacks class.
 
+    Attributes
+    ----------
+    logger : logging.Logger
+        Callback logger. You can set the logging level with the 'set_log_level'.
+
     References
     ----------
     .. [1] Keras - keras.callbacks
@@ -15,8 +21,18 @@ class Callback:
     """
 
     def __init__(self):
-        logging.basicConfig(level=logging.INFO)
-        self.callback_type = "<Trainer class>"
+        self.logger = get_logger(name=type(self).__name__)
+
+    def set_log_level(self, log_level) -> None:
+        """
+        Set the logging level this callback instance.
+
+        Parameters
+        ----------
+        log_level : int
+            Logging level.
+        """
+        self.logger.setLevel(level=log_level)
 
     def on_train_step_start(self, params_dict: dict) -> None:
         """Called at the start of a training step.
@@ -202,22 +218,6 @@ class Callback:
         """
         pass
 
-    def reset_parameters(self) -> None:
-        """DEPRECATED: will be removed in future versions.
-
-        Reset callback parameters when called.
-
-        This function is called by `torchfitter.manager.Manager` class to
-        restart the initial parameters of self callback.
-
-        It is mandatory to implement this method if one wants to use the
-        `torchfitter.manager.Manager` class along with a set of callbacks.
-        """
-        raise NotImplementedError(
-            "Callback must implement 'reset_parameters' method in order to run"
-            "multiple experiments consistently."
-        )
-
 
 class CallbackHandler(Callback):
     """Trainer callback handler.
@@ -240,6 +240,20 @@ class CallbackHandler(Callback):
             raise TypeError("Callbacks must be a list of callbacks")
 
         self.callbacks_list = callbacks_list
+
+    def set_log_level(self, log_level) -> None:
+        """
+        Set the logging level for all callbacks contained in this instance of
+        CallbacksHandler.
+
+        Parameters
+        ----------
+        log_level : int
+            Logging level.
+        """
+        if self.handle_callbacks:
+            for callback in self.callbacks_list:
+                callback.set_log_level(log_level=log_level)
 
     def on_train_step_start(self, params_dict: dict) -> None:
         """Called at the start of a training step.
@@ -436,13 +450,3 @@ class CallbackHandler(Callback):
         if self.handle_callbacks:
             for callback in self.callbacks_list:
                 callback.on_fit_end(params_dict)
-
-    def reset_parameters(self) -> None:
-        """Reset callback parameters when called.
-
-        If callbacks `self.callbacks_list` is not empty, the called callbacks
-        must implement `reset_parameters` method.
-        """
-        if self.handle_callbacks:
-            for callback in self.callbacks_list:
-                callback.reset_parameters()

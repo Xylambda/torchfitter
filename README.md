@@ -26,8 +26,7 @@ multiple experiments for different random seeds.
 ## Installation
 **Normal user**
 ```bash
-git clone https://github.com/Xylambda/torchfitter.git
-pip install torchfitter/.
+pip install torchfitter
 ```
 
 **Developer**

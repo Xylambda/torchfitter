@@ -20,5 +20,11 @@ setup(
     package_dir={"": "src"},
     author="Alejandro Pérez-Sanjuán",
     python_requires=">=3.7,",
-    install_requires=["numpy", "torchmetrics", "torch>=1.1.0", "accelerate"],
+    install_requires=[
+        "rich",
+        "numpy",
+        "accelerate",
+        "torchmetrics",
+        "torch>=1.1.0",
+    ],
 )

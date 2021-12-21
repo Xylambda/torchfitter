@@ -8,7 +8,7 @@ import torch.optim as optim
 from pathlib import Path
 from torch.utils.data import DataLoader
 from torchfitter.trainer import Trainer
-from torchfitter.utils import DataWrapper
+from torchfitter.utils.data import DataWrapper
 from torchfitter.conventions import ParamsDict
 from sklearn.model_selection import train_test_split
 from torchfitter.callbacks.base import CallbackHandler

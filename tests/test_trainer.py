@@ -7,7 +7,7 @@ import torch.optim as optim
 from pathlib import Path
 from torch.utils.data import DataLoader
 from torchfitter.trainer import Trainer
-from torchfitter.utils import DataWrapper
+from torchfitter.utils.data import DataWrapper
 from torchfitter.conventions import ParamsDict
 from sklearn.model_selection import train_test_split
 from torchfitter.testing import (
@@ -72,6 +72,7 @@ def test_trainer(train_config):
         optimizer=optimizer,
         mixed_precision=False,
     )
+    trainer.reset_parameters(reset_model=True)
 
     # fitting process
     history = trainer.fit(train_loader, val_loader, epochs=100)
@@ -108,6 +109,7 @@ def test_trainer_mixed_precision(train_config):
         optimizer=optimizer,
         mixed_precision=True,
     )
+    trainer.reset_parameters(reset_model=True)
 
     # fitting process
     history = trainer.fit(train_loader, val_loader, epochs=100)
@@ -143,6 +145,7 @@ def test_trainer_gradient_accumulation(train_config):
         optimizer=optimizer,
         accumulate_iter=4,
     )
+    trainer.reset_parameters(reset_model=True)
 
     # fitting process
     history = trainer.fit(train_loader, val_loader, epochs=100)
@@ -180,6 +183,7 @@ def test_trainer_gradient_clipping(train_config):
         gradient_clipping="norm",
         gradient_clipping_kwargs={"max_norm": 1.0, "norm_type": 2.0},
     )
+    trainer.reset_parameters(reset_model=True)
 
     # fitting process
     history = trainer.fit(train_loader, val_loader, epochs=100)
@@ -218,6 +222,7 @@ def test_trainer_all_features(train_config):
         gradient_clipping="norm",
         gradient_clipping_kwargs={"max_norm": 1.0, "norm_type": 2.0},
     )
+    trainer.reset_parameters(reset_model=True)
 
     # fitting process
     history = trainer.fit(train_loader, val_loader, epochs=100)

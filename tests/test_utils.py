@@ -1,7 +1,8 @@
 import torch
 import pytest
 import numpy as np
-from torchfitter.utils import DataWrapper, numpy_to_torch, FastTensorDataLoader
+from torchfitter.utils.preprocessing import numpy_to_torch
+from torchfitter.utils.data import DataWrapper, FastTensorDataLoader
 
 
 def test_datawrapper():

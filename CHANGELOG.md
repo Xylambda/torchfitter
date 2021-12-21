@@ -4,6 +4,41 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## [4.1.0] - 2021-12-26
+
+### Added
+
+- Add possibility to set the log level of the callbacks.
+- Add stochastic weight averaging callback.
+
+### Changed
+
+- Change `with torch.no_grad()` for `@torch.no_grad()` in trainer.
+
+### Removed 
+
+- Remove `reset_parameters` method from callbacks.
+
+
+## [4.0.0] - 2021-12-26
+
+### Added
+
+- Add more hooks to the callback system.
+- Rich progress bar as callback.
+- accelerate.Accelerator backend.
+- `trainer.Trainer.fit` now returns a dictionary with the train history.
+
+### Changed
+
+- Update README.
+- Update metrics handling.
+
+### Removed 
+
+- Remove callback type.
+
+
 ## [3.1.0] - 2021-07-27
 
 ### Fixed

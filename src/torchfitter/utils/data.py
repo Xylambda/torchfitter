@@ -1,17 +1,16 @@
-""" Utils functions. """
-
+"""
+Pool of utilities to wrap data.
+"""
 import torch
-import logging
 import numpy as np
 from typing import Tuple, Union
 from torch.utils.data import Dataset
+from torchfitter.utils.preprocessing import numpy_to_torch
+
 
 __all__ = [
     "DataWrapper",
-    "numpy_to_torch",
-    "check_model_on_cuda",
     "FastTensorDataLoader",
-    "train_test_val_split" "get_logger",
 ]
 
 
@@ -73,48 +72,14 @@ class DataWrapper(Dataset):
         return X, y
 
 
-def numpy_to_torch(array: np.ndarray, dtype: str) -> torch.Tensor:
-    """
-    Cast a numpy array to a torch tensor of the given dtype.
-
-    Parameters
-    ----------
-    array : numpy.array
-        Array to transform.
-    dtype : str
-        Desired data type.
-
-    Returns
-    -------
-    tensor : torch.Tensor
-        Torch tensor with the desired properties.
-    """
-    return getattr(torch.from_numpy(array), dtype)()
-
-
-def check_model_on_cuda(model: torch.nn.Module) -> bool:
-    """
-    Check if the model is stored in a cuda device.
-
-    Parameters
-    ----------
-    model : torch.nn.Module
-        PyTorch model to check.
-
-    Return
-    ------
-    bool
-        True if the model is stored on a cuda device.
-    """
-    return next(model.parameters()).is_cuda
-
-
 class FastTensorDataLoader:
     """DataLoader with faster loading.
 
     This class allows for a faster data loading. Although it won't always
     speed up the loading process, it can make the loading process 20 times
     faster.
+
+    See `References` section to know the author.
 
     Parameters
     ----------
@@ -175,39 +140,3 @@ class FastTensorDataLoader:
 
     def __len__(self) -> int:
         return self.n_batches
-
-
-def train_test_val_split(X, y):
-    """
-    Splits the given dataset into train, validation and test sets.
-
-    Parameters
-    ----------
-    X : array-like
-    y : array-like
-
-    Returns
-    -------
-    """
-    raise NotImplementedError("func 'train_test_val_split' is not implemented")
-
-
-def get_logger(name: str, level: int) -> logging.Logger:
-    """
-    Generate a logger with the specified name and level.
-
-    Parameters
-    ----------
-    name : str
-        Logger name.
-    level : int
-        Logging level for the logger.
-
-    Returns
-    -------
-    logger : logging.Logger
-        Logger.
-    """
-    logger = logging.getLogger(name=name)
-    logger.setLevel(level=level)
-    return logger

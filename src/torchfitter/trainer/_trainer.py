@@ -288,9 +288,7 @@ class Trainer:
         """
         self.accelerator.scaler = scaler
 
-    def reset_parameters(
-        self, reset_callbacks=False, reset_model=False
-    ) -> None:
+    def reset_parameters(self, reset_model=False) -> None:
         """
         Reset the internal dictionary that keeps track of the parameters state.
 
@@ -304,16 +302,6 @@ class Trainer:
         restart_dict = self.internal_state.reset_parameters(
             reset_model=reset_model
         )
-
-        if reset_callbacks:
-            if self.callbacks_list is not None:
-                for callback in self.callbacks_list:
-                    callback.reset_parameters()
-
-                self.callback_handler = CallbackHandler(
-                    callbacks_list=self.callbacks_list
-                )
-
         self.params_dict = restart_dict
 
     def train_step(
@@ -444,6 +432,7 @@ class Trainer:
 
         return loss
 
+    @torch.no_grad()
     def validation_step(
         self, loader: torch.utils.data.dataloader.DataLoader
     ) -> float:
@@ -465,36 +454,35 @@ class Trainer:
         self.model.eval()
 
         losses = []  # loss as mean of batch losses
-        with torch.no_grad():
-            for batch_idx, batch in enumerate(loader):
-                self.callback_handler.on_validation_batch_start(
-                    self.internal_state.get_state_dict()
-                )
-                loss = self.batch_validation_step(
-                    batch_index=batch_idx, batch=batch
-                )
-                self.callback_handler.on_validation_batch_end(
-                    self.internal_state.get_state_dict()
-                )
-                losses.append(loss.item())
+        for batch_idx, batch in enumerate(loader):
+            self.callback_handler.on_validation_batch_start(
+                self.internal_state.get_state_dict()
+            )
+            loss = self.batch_validation_step(
+                batch_index=batch_idx, batch=batch
+            )
+            self.callback_handler.on_validation_batch_end(
+                self.internal_state.get_state_dict()
+            )
+            losses.append(loss.item())
 
-            # compute accumulated metrics
-            metrics_accumulated = (
-                self.metrics_handler.accumulated_batch_computation()
+        # compute accumulated metrics
+        metrics_accumulated = (
+            self.metrics_handler.accumulated_batch_computation()
+        )
+
+        if metrics_accumulated is not None:
+            self.internal_state.update_metrics(
+                is_train=False, **metrics_accumulated
             )
 
-            if metrics_accumulated is not None:
-                self.internal_state.update_metrics(
-                    is_train=False, **metrics_accumulated
-                )
+        epoch_loss = statistics.mean(losses)
+        self.internal_state.update_loss_history(
+            value=epoch_loss, is_train=False, is_batch=False
+        )
 
-            epoch_loss = statistics.mean(losses)
-            self.internal_state.update_loss_history(
-                value=epoch_loss, is_train=False, is_batch=False
-            )
-
-            # reset metrics
-            self.metrics_handler.reset_metrics()
+        # reset metrics
+        self.metrics_handler.reset_metrics()
 
         return epoch_loss
 

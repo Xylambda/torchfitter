@@ -253,10 +253,16 @@ class TrainerInternalState:
             self.__dict__[hist_type][metric][tr_or_val].append(value)
 
     def reset_parameters(self, reset_model=True):
-        if reset_model:
-            self.model.reset_parameters()
+        model = self.__dict__[ParamsDict.MODEL]
+        optim = self.__dict__[ParamsDict.OPTIMIZER]
+        accelerator = self.__dict__[ParamsDict.ACCELERATOR]
 
-        self.___initialize_dict(model=self.model, device=self.device)
+        if reset_model:
+            model.reset_parameters()
+
+        self.___initialize_dict(
+            model=model, accelerator=accelerator, optimizer=optim
+        )
 
 
 class MetricsHandler:

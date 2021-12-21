@@ -1,25 +1,16 @@
 """ Callbacks for the manager class """
-import sys
 import torch
 import logging
-import warnings
 import subprocess
 from typing import List
 from .base import Callback
-from torchfitter.utils import get_logger
 from torchfitter.conventions import ParamsDict
-
-
-__RICH_INSTALLED = "rich" in sys.modules
-
-if __RICH_INSTALLED:
-    from rich.progress import (
-        Progress,
-        BarColumn,
-        TimeRemainingColumn,
-    )
-else:
-    warnings.warn(f"'rich' package not installed.")
+from torch.optim.swa_utils import AveragedModel
+from rich.progress import (
+    Progress,
+    BarColumn,
+    TimeRemainingColumn,
+)
 
 
 class EarlyStopping(Callback):
@@ -95,50 +86,6 @@ class EarlyStopping(Callback):
                 f"Early stopping applied at epoch: {self.stopped_epoch}"
             )
 
-    def reset_parameters(self):
-        for key, value in self.__restart_dict.items():
-            self.__dict__[key] = value
-
-
-class ProgressBarLogger(Callback):
-    """
-    Class to log stats on the tqdm bar.
-    """
-
-    def __init__(self):
-        super(ProgressBarLogger, self).__init__()
-
-    def __repr__(self) -> str:
-        return f"ProgressBarLogger()"
-
-    def on_fit_start(self, params_dict):
-        dev = params_dict[ParamsDict.DEVICE]
-        logging.info(f"Starting training process on {dev}")
-
-    def on_epoch_end(self, params_dict):
-        # get params
-        val_loss = params_dict[ParamsDict.VAL_LOSS]
-        train_loss = params_dict[ParamsDict.TRAIN_LOSS]
-        epoch_time = params_dict[ParamsDict.EPOCH_TIME]
-        pbar = params_dict[ParamsDict.PROG_BAR]
-
-        pbar.set_postfix(
-            train_loss=train_loss,
-            val_loss=val_loss,
-            epoch_time=f"{epoch_time:.2f} s",
-            refresh=True,
-        )
-
-    def on_fit_end(self, params_dict):
-        total_time = params_dict[ParamsDict.TOTAL_TIME]
-        # final message
-        logging.info(
-            f"""End of training. Total time: {total_time:0.5f} seconds"""
-        )
-
-    def reset_parameters(self):
-        pass  # no need to restart any parameter
-
 
 class LoggerCallback(Callback):
     """
@@ -188,9 +135,6 @@ class LoggerCallback(Callback):
             f"""End of training. Total time: {total_time:0.5f} seconds"""
         )
 
-    def reset_parameters(self) -> None:
-        pass
-
 
 class LearningRateScheduler(Callback):
     """Callback to schedule learning rate.
@@ -199,9 +143,13 @@ class LearningRateScheduler(Callback):
     learning rate of the optimizer by calling `scheduler.step()` after the
     training step has been performed; i.e., `on_train_step_end`.
 
+    If you were to use a learning rate scheduler in addition to stochastic
+    averaging, you must pass it to the constructor of this class instead of
+    creating a callback.
+
     Parameters
     ----------
-    scheduler : torch.optim.Scheduler
+    scheduler : torch.optim.lr_scheduler._LRScheduler
         Scheduler use to perform the lr reduction.
     metric : str, optional, default : torchfitter.conventions.ParamsDict.LOSS
         Metric to track in order to reduce the learning rate. If you want to
@@ -233,7 +181,7 @@ class LearningRateScheduler(Callback):
 
     def __init__(
         self,
-        scheduler,
+        scheduler: torch.optim.lr_scheduler._LRScheduler,
         metric: str = ParamsDict.LOSS,
         on_train: bool = True,
     ):
@@ -242,11 +190,6 @@ class LearningRateScheduler(Callback):
         self.scheduler = scheduler
         self.metric = metric
         self.on_train = on_train
-        self.__restart_dict = dict(
-            (k, self.scheduler.__dict__[k])
-            for k in self.scheduler.__dict__.keys()
-            if k != "optimizer"
-        )
 
     def __repr__(self) -> str:
         sch = type(self.scheduler).__name__
@@ -261,10 +204,6 @@ class LearningRateScheduler(Callback):
             self.scheduler.step(metric)
         else:
             self.scheduler.step()
-
-    def reset_parameters(self):
-        for key, value in self.__restart_dict.items():
-            self.scheduler.__dict__[key] = value
 
 
 class GPUStats(Callback):
@@ -334,9 +273,6 @@ class GPUStats(Callback):
 
         return stdout
 
-    def reset_parameters(self):
-        pass  # no parameters to reset
-
 
 class RichProgressBar(Callback):
     """
@@ -359,10 +295,11 @@ class RichProgressBar(Callback):
     def __init__(
         self, display_step: int = 1, log_lr: bool = False, precision: int = 5
     ):
+        super(RichProgressBar, self).__init__()
+
         self.display_step = display_step
         self.prec = precision
         self.log_lr = log_lr
-        self.logger = get_logger(name="bar", level=logging.INFO)
 
     def on_train_batch_end(self, params_dict: dict) -> None:
         epoch = params_dict[ParamsDict.EPOCH_NUMBER]
@@ -440,5 +377,116 @@ class RichProgressBar(Callback):
 
         return text_format
 
-    def reset_parameters(self) -> None:
-        pass
+
+class StochasticWeightAveraging(Callback):
+    """
+    Applies a stochastic weight averaging to the training process. If you were
+    to use a learning rate scheduler in addition to stochastic averaging, you
+    must pass it to the constructor of this class instead of creating a
+    callback.
+
+    Parameters
+    -----------
+    swa_scheduler : torch.optim.lr_scheduler.Scheduler
+        Stochastic weight averaging scheduler.
+    start_epoch : int
+        Epoch from which to start applying stochastic weight average.
+    scheduler : torch.optim.lr_scheduler._LRScheduler
+        Scheduler use to perform the lr reduction.
+    metric : str, optional, default : torchfitter.conventions.ParamsDict.LOSS
+        Metric to track in order to reduce the learning rate. If you want to
+        use one of the passed metrics you must pass the class name. See
+        examples section.
+    on_train : bool, optional, default: True
+        Whether to watch the train version of the metric (True) or the
+        validation version of the metric (False)
+
+    Attributes
+    ----------
+    swa_model : torch.nn.Module
+        Stochastic weighted averaged model.
+
+    References
+    ----------
+    .. [1] Pavel Izmailov, Andrew Gordon Wilson and Vincent Queneneville-Belair
+       PyTorch 1.6 now includes Stochastic Weight Averaging
+       https://pytorch.org/blog/pytorch-1.6-now-includes-stochastic-weight-averaging/
+
+    .. [2] PyTorch - Stochastic Weight Averaging
+       https://pytorch.org/docs/stable/optim.html#stochastic-weight-averaging
+
+    Examples
+    --------
+    >>> optimizer, model, criterion = ...
+    >>> swa_model = torch.optim.swa_utils.AveragedModel(model)
+    >>> swa_start = 160
+    >>> scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=300)
+    >>> swa_scheduler = SWALR(optimizer, swa_lr=0.05)
+    >>> swa_callback = StochasticWeightAveraging(swa_scheduler, swa_start)
+    >>> trainer = Trainer(callbacks=[swa_callback], **kwargs)
+    """
+
+    def __init__(
+        self,
+        swa_scheduler: torch.optim.swa_utils.SWALR,
+        start_epoch: int,
+        scheduler: torch.optim.lr_scheduler._LRScheduler = None,
+        metric: str = None,
+        on_train: bool = True,
+    ):
+        super(StochasticWeightAveraging, self).__init__()
+
+        self.swa_scheduler = swa_scheduler
+        self.start_epoch = start_epoch
+        self.scheduler = scheduler
+        self.metric = metric
+        self.on_train = on_train
+
+        self.__swa_model = None
+
+    def __repr__(self) -> str:
+        return f"StochasticWeightAveraging(swa_scheduler={self.swa_scheduler}, start_epoch={self.start_epoch})"
+
+    def on_fit_start(self, params_dict: dict) -> None:
+        model = params_dict[ParamsDict.MODEL]
+        self.__swa_model = AveragedModel(model)
+
+    def on_train_step_end(self, params_dict: dict) -> None:
+        self.__run_scheduler(params_dict=params_dict)
+
+    def __run_scheduler(self, params_dict: dict) -> None:
+        """
+        Run appropiate scheduler depending on the epoch number
+        """
+        epoch = params_dict[ParamsDict.EPOCH_NUMBER]
+        model = params_dict[ParamsDict.MODEL]
+
+        if epoch >= self.start_epoch:
+            # run swa scheduler
+            self.__swa_model.update_parameters(model)
+            self.swa_scheduler.step()
+        else:
+            # run "standard" scheduler
+            if self.metric is not None:
+                key = "train" if self.on_train else "validation"
+                metric = params_dict[ParamsDict.EPOCH_HISTORY][self.metric][
+                    key
+                ][-1]
+                self.scheduler.step(metric)
+            else:
+                self.scheduler.step()
+
+    def on_fit_end(self, params_dict: dict) -> None:
+        train_loader = params_dict[ParamsDict.TRAIN_LOADER]
+        torch.optim.swa_utils.update_bn(train_loader, self.swa_scheduler)
+
+    def get_swa_model(self) -> torch.nn.Module:
+        """
+        Getter method for the Stochastic Weight Averaged model.
+
+        Returns
+        -------
+        swa_model : torch.nn.Module
+            SWA model.
+        """
+        return self.__swa_model
