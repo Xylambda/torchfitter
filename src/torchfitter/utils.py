@@ -11,8 +11,7 @@ __all__ = [
     "numpy_to_torch",
     "check_model_on_cuda",
     "FastTensorDataLoader",
-    "train_test_val_split"
-    "get_logger"
+    "train_test_val_split" "get_logger",
 ]
 
 
@@ -38,7 +37,7 @@ class DataWrapper(Dataset):
         X: torch.Tensor,
         y: torch.Tensor,
         dtype_X: str = "float",
-        dtype_y: str = "int"
+        dtype_y: str = "int",
     ):
         X, y = self._check_inputs(X, y, dtype_X, dtype_y)
 
@@ -56,7 +55,7 @@ class DataWrapper(Dataset):
         X: Union[np.ndarray, torch.Tensor],
         y: Union[np.ndarray, torch.Tensor],
         dtype_X: float,
-        dtype_y: float
+        dtype_y: float,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Check if the given inputs are numpy arrays and convert them if
         necessary.
@@ -113,7 +112,7 @@ def check_model_on_cuda(model: torch.nn.Module) -> bool:
 class FastTensorDataLoader:
     """DataLoader with faster loading.
 
-    This class allows for a faster data loading. Although it won't always 
+    This class allows for a faster data loading. Although it won't always
     speed up the loading process, it can make the loading process 20 times
     faster.
 
@@ -124,7 +123,7 @@ class FastTensorDataLoader:
     batch_size : int, optional, default: 32
         The batch size to load.
     shuffle : bool, optional, default: False
-        Whether to shuffle the data (True) or not (False). If False, data will 
+        Whether to shuffle the data (True) or not (False). If False, data will
         be processed in sequentially.
 
     References
@@ -132,12 +131,13 @@ class FastTensorDataLoader:
     .. [1] PyTorch discuss - Dataloader much slower than manual batching:
         https://discuss.pytorch.org/t/dataloader-much-slower-than-manual-
         batching/27014/6
-    
+
     """
+
     def __init__(
-        self, 
-        *tensors: torch.Tensor, 
-        batch_size: int = 32, 
+        self,
+        *tensors: torch.Tensor,
+        batch_size: int = 32,
         shuffle: bool = False
     ):
         assert all(t.shape[0] == tensors[0].shape[0] for t in tensors)
@@ -151,9 +151,9 @@ class FastTensorDataLoader:
         n_batches, remainder = divmod(self.dataset_len, self.batch_size)
         if remainder > 0:
             n_batches += 1
-        
+
         self.n_batches = n_batches
-    
+
     def __iter__(self):
         if self.shuffle:
             r = torch.randperm(self.dataset_len)
@@ -190,7 +190,6 @@ def train_test_val_split(X, y):
     -------
     """
     raise NotImplementedError("func 'train_test_val_split' is not implemented")
-
 
 
 def get_logger(name: str, level: int) -> logging.Logger:

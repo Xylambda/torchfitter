@@ -6,5 +6,5 @@ from ._callbacks import (
     LoggerCallback,
     LearningRateScheduler,
     GPUStats,
-    RichProgressBar
+    RichProgressBar,
 )

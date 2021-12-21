@@ -14,10 +14,10 @@ from torchfitter.trainer._utils import TrainerInternalState, MetricsHandler
 class Trainer:
     """Class that eases the training of a PyTorch model.
 
-    This class leverages the power of 'accelerate' to handle the device 
+    This class leverages the power of 'accelerate' to handle the device
     management and the model optimization.
-    
-    The trainer tracks its state using a 
+
+    The trainer tracks its state using a
     'torchfitter.trainer.TrainerInternalState' object. You can also pass a list
     of callbacks and/or metrics to the trainer. The callbacks will be runned
     at different points depending on the methods that were filled. The metrics
@@ -34,16 +34,16 @@ class Trainer:
     regularizer : torchfitter.regularizer, optional, default: None
         Procedure to apply penalties to the loss function.
     mixed_precision : bool, optional, default: False
-        Whether to use mixed precision training or not. If True, the forward 
-        pass will be computed under the context of `torch.cuda.amp.autocast` 
-        and the backpropagation and gradient descent steps will be computed 
+        Whether to use mixed precision training or not. If True, the forward
+        pass will be computed under the context of `torch.cuda.amp.autocast`
+        and the backpropagation and gradient descent steps will be computed
         using `torch.cuda.amp.GradScaler`.
     callbacks : list of torchfitter.callback.Callback
         Callbacks to use during the training process.
     metrics : list of torchmetrics.Metric, optional, default: None
         List of metrics to compute in the fitting process. The metrics will be
-        registered in the internal state using the name of the class. For 
-        example, passing `[MeanSquaredError()]` will be registered as 
+        registered in the internal state using the name of the class. For
+        example, passing `[MeanSquaredError()]` will be registered as
         `MeanSquaredError`.
     accelerator : accelerate.Accelerator
         Accelerator object from 'accelerate'.
@@ -54,9 +54,9 @@ class Trainer:
         Norm gradient clipping of value gradient clipping. If None, gradient
         clipping won't be applied.
     gradient_clipping_kwargs : dict, optional, default: None
-        Dictionary containing keyword arguments for gradient clipping 
-        algorithm. Example: {max_norm=1, norm_type=2}. See 
-        https://huggingface.co/docs/accelerate/accelerator.html for more 
+        Dictionary containing keyword arguments for gradient clipping
+        algorithm. Example: {max_norm=1, norm_type=2}. See
+        https://huggingface.co/docs/accelerate/accelerator.html for more
         information.
     log_level : int, optional, default: logging.INFO
         Logging level.
@@ -79,15 +79,15 @@ class Trainer:
         model: torch.nn.Module,
         criterion: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
-        regularizer: RegularizerBase=None,
-        mixed_precision: bool=False,
-        callbacks: List[Callback]=None,
-        metrics: List[torchmetrics.Metric]=None,
-        accelerator: Accelerator=None,
-        accumulate_iter: int=1,
-        gradient_clipping: str=None,
-        gradient_clipping_kwargs: dict=None,
-        log_level: int=logging.INFO
+        regularizer: RegularizerBase = None,
+        mixed_precision: bool = False,
+        callbacks: List[Callback] = None,
+        metrics: List[torchmetrics.Metric] = None,
+        accelerator: Accelerator = None,
+        accumulate_iter: int = 1,
+        gradient_clipping: str = None,
+        gradient_clipping_kwargs: dict = None,
+        log_level: int = logging.INFO,
     ):
         self.criterion = criterion
         self.regularizer = regularizer
@@ -120,7 +120,7 @@ class Trainer:
         if self.metrics_handler.metric_names is not None:
             names = self.metrics_handler.metric_names
             self.internal_state.add_metrics(*names)
- 
+
     def fit(
         self,
         train_loader: torch.utils.data.dataloader.DataLoader,
@@ -129,8 +129,8 @@ class Trainer:
     ) -> dict:
         """Fit the model.
 
-        Fit the model using the given loaders for the given number of epochs. 
-        By default, the trainer does not display any information about the 
+        Fit the model using the given loaders for the given number of epochs.
+        By default, the trainer does not display any information about the
         fitting process, but you can use any of the callbacks designed for that
         purpose or create your own callbacks.
 
@@ -146,7 +146,7 @@ class Trainer:
         Returns
         -------
         history : dict
-            Dictionay with epoch and batch metrics. The metrics contained in 
+            Dictionay with epoch and batch metrics. The metrics contained in
             the dictionary will be the passed metrics + criterion results.
 
         """
@@ -163,37 +163,48 @@ class Trainer:
             **{
                 ParamsDict.TRAIN_LOADER: train_loader,
                 ParamsDict.VAL_LOADER: val_loader,
-                ParamsDict.TOTAL_EPOCHS: epochs
+                ParamsDict.TOTAL_EPOCHS: epochs,
             }
         )
 
         # track total training time
         total_start_time = time.perf_counter()
-        self.callback_handler.on_fit_start(self.internal_state.get_state_dict())
+        self.callback_handler.on_fit_start(
+            self.internal_state.get_state_dict()
+        )
 
         # ---- fitting process ----
         epoch = initial_epoch
         stop = False
         while epoch <= epochs and not stop:
-            self.callback_handler.on_epoch_start(self.internal_state.get_state_dict())
+            self.callback_handler.on_epoch_start(
+                self.internal_state.get_state_dict()
+            )
 
             # track epoch time
             epoch_start_time = time.perf_counter()
 
             # ------- train step -------
-            self.callback_handler.on_train_step_start(self.internal_state.get_state_dict())
-            tr_loss = self.train_step(train_loader) # actual step
-            self.callback_handler.on_train_step_end(self.internal_state.get_state_dict())
+            self.callback_handler.on_train_step_start(
+                self.internal_state.get_state_dict()
+            )
+            tr_loss = self.train_step(train_loader)  # actual step
+            self.callback_handler.on_train_step_end(
+                self.internal_state.get_state_dict()
+            )
 
             # ------- validation step -------
-            self.callback_handler.on_validation_step_start(self.internal_state.get_state_dict())
+            self.callback_handler.on_validation_step_start(
+                self.internal_state.get_state_dict()
+            )
             val_loss = self.validation_step(val_loader)
-            self.callback_handler.on_validation_step_end(self.internal_state.get_state_dict())
+            self.callback_handler.on_validation_step_end(
+                self.internal_state.get_state_dict()
+            )
 
             # -------- update internal state to track training --------
             self.internal_state.update_lr_history(
-                value=self.optimizer.param_groups[0]["lr"],
-                is_batch=False
+                value=self.optimizer.param_groups[0]["lr"], is_batch=False
             )
 
             epoch_time = time.perf_counter() - epoch_start_time
@@ -208,26 +219,30 @@ class Trainer:
             self.callback_handler.on_epoch_end(
                 self.internal_state.get_state_dict()
             )
-            
+
             epoch += 1
             stop = self.internal_state.get_single_param(
                 key=ParamsDict.STOP_TRAINING
             )
-            self.internal_state.update_params(**{ParamsDict.EPOCH_NUMBER: epoch})
+            self.internal_state.update_params(
+                **{ParamsDict.EPOCH_NUMBER: epoch}
+            )
 
         total_time = time.perf_counter() - total_start_time
 
-        self.internal_state.update_params(**{ParamsDict.TOTAL_TIME: total_time})
+        self.internal_state.update_params(
+            **{ParamsDict.TOTAL_TIME: total_time}
+        )
         self.callback_handler.on_fit_end(self.internal_state.get_state_dict())
 
         # construct history object to return
         history = {
-            ParamsDict.EPOCH_HISTORY : self.internal_state.get_single_param(
+            ParamsDict.EPOCH_HISTORY: self.internal_state.get_single_param(
                 key=ParamsDict.EPOCH_HISTORY
             ),
             ParamsDict.BATCH_HISTORY: self.internal_state.get_single_param(
                 key=ParamsDict.BATCH_HISTORY
-            )
+            ),
         }
         return history
 
@@ -240,15 +255,15 @@ class Trainer:
         algo : callable
             Callable function that wraps the gradient clipping funcionality.
         """
-        if self.gradient_clipping == 'value':
+        if self.gradient_clipping == "value":
             algo = self.accelerator.clip_grad_value_
-        
-        elif self.gradient_clipping == 'norm':
+
+        elif self.gradient_clipping == "norm":
             algo = self.accelerator.clip_grad_norm_
-        
+
         elif self.gradient_clipping is None:
             algo = None
-        
+
         else:
             raise ValueError(
                 "Not supported gradient "
@@ -262,8 +277,8 @@ class Trainer:
         """Set the gradient scaler used in mixed precision.
 
         Since the trainer relies on accelerate.Accelator class for the fitting
-        process the scaler is created inside the aforementioned. With this 
-        function you can set the scaler to be an instance with the desired 
+        process the scaler is created inside the aforementioned. With this
+        function you can set the scaler to be an instance with the desired
         argument values.
 
         Parameters
@@ -306,7 +321,7 @@ class Trainer:
     ) -> float:
         """Perform a train step using the given dataloader.
 
-        A train step consists of running and optimizing the model for each 
+        A train step consists of running and optimizing the model for each
         batch in the given train dataloader.
 
         Parameters
@@ -323,14 +338,20 @@ class Trainer:
 
         losses = []  # loss as mean of batch losses
         for batch_idx, batch in enumerate(loader):
-            self.callback_handler.on_train_batch_start(self.internal_state.get_state_dict())
+            self.callback_handler.on_train_batch_start(
+                self.internal_state.get_state_dict()
+            )
             loss = self.batch_train_step(batch_index=batch_idx, batch=batch)
-            self.callback_handler.on_train_batch_end(self.internal_state.get_state_dict())
+            self.callback_handler.on_train_batch_end(
+                self.internal_state.get_state_dict()
+            )
             losses.append(loss.item())
 
         # compute accumulated metrics (metric.compute())
-        metrics_accumulated = self.metrics_handler.accumulated_batch_computation()
-        
+        metrics_accumulated = (
+            self.metrics_handler.accumulated_batch_computation()
+        )
+
         if metrics_accumulated is not None:
             self.internal_state.update_metrics(
                 is_train=True, is_batch=False, **metrics_accumulated
@@ -338,9 +359,7 @@ class Trainer:
 
         epoch_loss = statistics.mean(losses)
         self.internal_state.update_loss_history(
-            value=epoch_loss,
-            is_train=True,
-            is_batch=False
+            value=epoch_loss, is_train=True, is_batch=False
         )
 
         # reset metrics
@@ -381,13 +400,16 @@ class Trainer:
             self.gradient_clipping_algo_(
                 self.model.parameters(), **self.gradient_clipping_kwargs
             )
-        
+
         # gradient accumulation logic
         batch_idx_plus = batch_index + 1
         loader_len = self.internal_state.get_single_param(
             key=ParamsDict.TRAIN_LOADER
         )
-        if batch_idx_plus % self.accumulate_iter == 0 or batch_idx_plus== loader_len:
+        if (
+            batch_idx_plus % self.accumulate_iter == 0
+            or batch_idx_plus == loader_len
+        ):
             # update parameters and remove gradient
             self.optimizer.step()
             self.optimizer.zero_grad()
@@ -405,9 +427,7 @@ class Trainer:
 
         # update history
         self.internal_state.update_loss_history(
-            value=loss.item(),
-            is_train=True,
-            is_batch=True
+            value=loss.item(), is_train=True, is_batch=True
         )
 
         self.internal_state.update_lr_history(
@@ -418,7 +438,7 @@ class Trainer:
         self.internal_state.update_params(
             **{
                 ParamsDict.TRAIN_BATCH: batch,
-                ParamsDict.TRAIN_BATCH_IDX: batch_index
+                ParamsDict.TRAIN_BATCH_IDX: batch_index,
             }
         )
 
@@ -429,7 +449,7 @@ class Trainer:
     ) -> float:
         """Perform a validation step using the given dataloader.
 
-        A validation step consists of running and the model for each batch in 
+        A validation step consists of running and the model for each batch in
         the given validation dataloader.
 
         Parameters
@@ -447,14 +467,22 @@ class Trainer:
         losses = []  # loss as mean of batch losses
         with torch.no_grad():
             for batch_idx, batch in enumerate(loader):
-                self.callback_handler.on_validation_batch_start(self.internal_state.get_state_dict())
-                loss = self.batch_validation_step(batch_index=batch_idx, batch=batch)
-                self.callback_handler.on_validation_batch_end(self.internal_state.get_state_dict())
+                self.callback_handler.on_validation_batch_start(
+                    self.internal_state.get_state_dict()
+                )
+                loss = self.batch_validation_step(
+                    batch_index=batch_idx, batch=batch
+                )
+                self.callback_handler.on_validation_batch_end(
+                    self.internal_state.get_state_dict()
+                )
                 losses.append(loss.item())
 
             # compute accumulated metrics
-            metrics_accumulated = self.metrics_handler.accumulated_batch_computation()
-            
+            metrics_accumulated = (
+                self.metrics_handler.accumulated_batch_computation()
+            )
+
             if metrics_accumulated is not None:
                 self.internal_state.update_metrics(
                     is_train=False, **metrics_accumulated
@@ -462,9 +490,7 @@ class Trainer:
 
             epoch_loss = statistics.mean(losses)
             self.internal_state.update_loss_history(
-                value=epoch_loss,
-                is_train=False,
-                is_batch=False
+                value=epoch_loss, is_train=False, is_batch=False
             )
 
             # reset metrics
@@ -476,7 +502,7 @@ class Trainer:
         self, batch_index, batch: Tuple[torch.Tensor, torch.Tensor]
     ) -> torch.Tensor:
         """
-        Define the computations to perform on each batch for the validation 
+        Define the computations to perform on each batch for the validation
         loop.
 
         Parameters
@@ -510,9 +536,7 @@ class Trainer:
 
         # update internal state
         self.internal_state.update_loss_history(
-            value=loss.item(),
-            is_train=False,
-            is_batch=True
+            value=loss.item(), is_train=False, is_batch=True
         )
 
         self.internal_state.update_lr_history(
@@ -533,7 +557,7 @@ class Trainer:
     ) -> torch.Tensor:
         """Compute loss graph.
 
-        If you override this method the passed regularizer algorithms won't be 
+        If you override this method the passed regularizer algorithms won't be
         applied unless they are specifically added.
 
         Parameters

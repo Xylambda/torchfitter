@@ -17,7 +17,7 @@ class RegularizerBase:
         Whether to apply regularization over bias terms (True) or not (False).
     """
 
-    def __init__(self, regularization_rate: float, biases: bool=False):
+    def __init__(self, regularization_rate: float, biases: bool = False):
         self.rate = regularization_rate
         self.biases = biases
 
@@ -31,14 +31,14 @@ class RegularizerBase:
     def __call__(
         self,
         named_parameters: Generator[str, torch.Tensor, None],
-        device: torch.device
+        device: torch.device,
     ) -> torch.Tensor:
         return self.compute_penalty(named_parameters, device)
 
     def compute_penalty(
         self,
         named_parameters: Generator[str, torch.Tensor, None],
-        device: torch.device
+        device: torch.device,
     ) -> torch.Tensor:
         """
         Parameters

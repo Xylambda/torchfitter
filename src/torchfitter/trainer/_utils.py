@@ -7,7 +7,7 @@ from torchfitter.conventions import ParamsDict
 
 class TrainerInternalState:
     """
-    Class that keeps track of the trainer internal state during the fitting 
+    Class that keeps track of the trainer internal state during the fitting
     process.
 
     Parameters
@@ -44,22 +44,23 @@ class TrainerInternalState:
         * learning_rate : list of floats
             Learning rate for each epoch up to the current epoch.
 
-        The dictionary can be updated with more keys through the method 
+        The dictionary can be updated with more keys through the method
         'add_history_element'.
     progress_bar : tqdm.tqdm
         Progress bar from tqdm library.
     """
+
     def __init__(self, model, accelerator, optimizer) -> None:
         self.___initialize_dict(
             model=model, accelerator=accelerator, optimizer=optimizer
         )
-    
+
     def ___initialize_dict(self, model, accelerator, optimizer):
         """
         Helper function that initializes all attributes.
         """
-        self.__dict__[ParamsDict.TRAIN_LOSS] = float('inf')
-        self.__dict__[ParamsDict.VAL_LOSS] = float('inf')
+        self.__dict__[ParamsDict.TRAIN_LOSS] = float("inf")
+        self.__dict__[ParamsDict.VAL_LOSS] = float("inf")
         self.__dict__[ParamsDict.EPOCH_TIME] = 0
         self.__dict__[ParamsDict.EPOCH_NUMBER] = 1
         self.__dict__[ParamsDict.TOTAL_EPOCHS] = None
@@ -70,18 +71,12 @@ class TrainerInternalState:
         self.__dict__[ParamsDict.MODEL] = model
         self.__dict__[ParamsDict.OPTIMIZER] = optimizer
         self.__dict__[ParamsDict.EPOCH_HISTORY] = {
-            ParamsDict.LOSS: {
-                'train': [],
-                'validation': []
-            },
-            ParamsDict.HISTORY_LR: []
+            ParamsDict.LOSS: {"train": [], "validation": []},
+            ParamsDict.HISTORY_LR: [],
         }
         self.__dict__[ParamsDict.BATCH_HISTORY] = {
-            ParamsDict.LOSS: {
-                'train': [],
-                'validation': []
-            },
-            ParamsDict.HISTORY_LR: []
+            ParamsDict.LOSS: {"train": [], "validation": []},
+            ParamsDict.HISTORY_LR: [],
         }
 
     def add_metrics(self, *args) -> None:
@@ -99,15 +94,18 @@ class TrainerInternalState:
                 raise TypeError(
                     f"'key' {key} must be a string, not {type(key)}"
                 )
-            
-            for metric_type in [ParamsDict.EPOCH_HISTORY, ParamsDict.BATCH_HISTORY]:
-                self.__dict__[metric_type][key] = {} # avoid key error
-                self.__dict__[metric_type][key]['train'] = []
-                self.__dict__[metric_type][key]['validation'] = []
+
+            for metric_type in [
+                ParamsDict.EPOCH_HISTORY,
+                ParamsDict.BATCH_HISTORY,
+            ]:
+                self.__dict__[metric_type][key] = {}  # avoid key error
+                self.__dict__[metric_type][key]["train"] = []
+                self.__dict__[metric_type][key]["validation"] = []
 
     def get_single_param(self, key: str) -> object:
         """
-        Retrieve a single value from the set of internal attributes of the 
+        Retrieve a single value from the set of internal attributes of the
         class.
 
         Parameters
@@ -161,15 +159,15 @@ class TrainerInternalState:
         params = []
         for key in args:
             if not isinstance(key, str):
-                raise TypeError('Key to retrieve must be a string')
-            
+                raise TypeError("Key to retrieve must be a string")
+
             val = self.get_single_param(key=key)
             params.append(val)
 
         return params
 
     def update_loss_history(
-        self, value: float, is_train: bool=True, is_batch: bool=False
+        self, value: float, is_train: bool = True, is_batch: bool = False
     ) -> None:
         """
         Update history loss dictionary with the passed value.
@@ -179,22 +177,24 @@ class TrainerInternalState:
         value : float
             Value to update the learning rate.
         is_train : bool, optional, default: True
-            Whether to update the train history (True) or the validation 
+            Whether to update the train history (True) or the validation
             history (False).
         is_batch : bool, optional, default: False
-            Whether to update the batch history (True) or the epoch history 
+            Whether to update the batch history (True) or the epoch history
             (False).
         """
         # select batch or epoch
-        hist_type = ParamsDict.BATCH_HISTORY if is_batch else ParamsDict.EPOCH_HISTORY
+        hist_type = (
+            ParamsDict.BATCH_HISTORY if is_batch else ParamsDict.EPOCH_HISTORY
+        )
 
         # select train or validation
-        tr_or_val = 'train' if is_train else 'validation'
-        
+        tr_or_val = "train" if is_train else "validation"
+
         # update
         self.__dict__[hist_type][ParamsDict.LOSS][tr_or_val].append(value)
 
-    def update_lr_history(self, value: float, is_batch: bool=False) -> None:
+    def update_lr_history(self, value: float, is_batch: bool = False) -> None:
         """
         Update learning rate history with the passed value.
 
@@ -203,11 +203,13 @@ class TrainerInternalState:
         value : float
             Value to update the learning rate.
         is_batch : bool, optional, default: False
-            Whether to update the batch history (True) or the epoch history 
+            Whether to update the batch history (True) or the epoch history
             (False).
         """
         # select batch or epoch
-        hist_type = ParamsDict.BATCH_HISTORY if is_batch else ParamsDict.EPOCH_HISTORY
+        hist_type = (
+            ParamsDict.BATCH_HISTORY if is_batch else ParamsDict.EPOCH_HISTORY
+        )
 
         # update lr
         self.__dict__[hist_type][ParamsDict.HISTORY_LR].append(value)
@@ -225,7 +227,7 @@ class TrainerInternalState:
             self.__dict__[key] = value
 
     def update_metrics(
-        self, is_train: bool, is_batch: bool=False, **kwargs
+        self, is_train: bool, is_batch: bool = False, **kwargs
     ) -> None:
         """
         Update the metrics dictionary with the passed key-value pairs.
@@ -233,21 +235,23 @@ class TrainerInternalState:
         Parameters
         ----------
         is_train : bool
-            If True, the train metrics will be updated. Otherwise, the 
+            If True, the train metrics will be updated. Otherwise, the
             validation metrics will be updated.
         """
         # select batch or epoch
-        hist_type = ParamsDict.BATCH_HISTORY if is_batch else ParamsDict.EPOCH_HISTORY
+        hist_type = (
+            ParamsDict.BATCH_HISTORY if is_batch else ParamsDict.EPOCH_HISTORY
+        )
 
         # select train or validation
-        tr_or_val = 'train' if is_train else 'validation'
+        tr_or_val = "train" if is_train else "validation"
 
         for metric, value in kwargs.items():
             if metric not in self.__dict__[hist_type]:
                 raise KeyError(f"'{metric}' not found in history dict.")
 
             self.__dict__[hist_type][metric][tr_or_val].append(value)
-    
+
     def reset_parameters(self, reset_model=True):
         if reset_model:
             self.model.reset_parameters()
@@ -258,7 +262,7 @@ class TrainerInternalState:
 class MetricsHandler:
     """Class to handle the metrics computation in the process.
 
-    The metrics must be provided using the torchmetrics package API; that is, 
+    The metrics must be provided using the torchmetrics package API; that is,
     the metrics modules must support single and accumulated batch computation.
     See references for more information.
 
@@ -272,19 +276,20 @@ class MetricsHandler:
     Attributes
     ----------
     metric_names : list of str
-        Names of the metrics. The names are automatically computed using 
+        Names of the metrics. The names are automatically computed using
         type(metric).__name__
 
     References
     ----------
-    .. [1] PyTorch-Lightning - torchmetrics 
+    .. [1] PyTorch-Lightning - torchmetrics
        https://torchmetrics.readthedocs.io/en/latest/
-    
+
     """
+
     def __init__(
         self,
         metrics_list: List[torchmetrics.Metric],
-        criterion: torch.nn.Module
+        criterion: torch.nn.Module,
     ) -> None:
 
         self.metrics_list = metrics_list
@@ -294,14 +299,14 @@ class MetricsHandler:
         self.__handle_metrics = False if self.metrics_list is None else True
 
         if self.__handle_metrics:
-            self.metric_names = [type(metric).__name__ for metric in self.metrics_list]
+            self.metric_names = [
+                type(metric).__name__ for metric in self.metrics_list
+            ]
         else:
             self.metric_names = None
 
     def single_batch_computation(
-        self,
-        predictions: torch.Tensor,
-        target: torch.Tensor
+        self, predictions: torch.Tensor, target: torch.Tensor
     ) -> Dict[str, torch.Tensor]:
         """
         Perform a single batch computation on all metrics.
@@ -330,7 +335,7 @@ class MetricsHandler:
 
     def accumulated_batch_computation(self) -> Dict[str, torch.Tensor]:
         """
-        Perform the metric computation on all batches using custom 
+        Perform the metric computation on all batches using custom
         accumulation.
 
         Returns
@@ -350,7 +355,7 @@ class MetricsHandler:
 
     def reset_metrics(self) -> None:
         """
-        Reset the internal state of the metrics in order to prepare them to 
+        Reset the internal state of the metrics in order to prepare them to
         receive new data.
         """
         if self.__handle_metrics:

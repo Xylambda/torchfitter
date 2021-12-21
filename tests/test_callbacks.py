@@ -13,15 +13,15 @@ from torchfitter.conventions import ParamsDict
 from sklearn.model_selection import train_test_split
 from torchfitter.callbacks.base import CallbackHandler
 from torchfitter.testing import (
-    change_model_params, 
-    check_monotonically_decreasing
+    change_model_params,
+    check_monotonically_decreasing,
 )
 from torchfitter.callbacks import (
-    EarlyStopping, 
+    EarlyStopping,
     LoggerCallback,
     LearningRateScheduler,
     GPUStats,
-    RichProgressBar
+    RichProgressBar,
 )
 
 from torchfitter.callbacks.base import CallbackHandler, Callback
@@ -38,36 +38,28 @@ def train_config():
     # we create a model and set known params
     model = nn.Linear(in_features=1, out_features=1)
     change_model_params(
-        model, 
-        weights=torch.Tensor([[-0.065]]), 
-        biases=torch.Tensor([0.5634])
+        model, weights=torch.Tensor([[-0.065]]), biases=torch.Tensor([0.5634])
     )
-    
+
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters())
 
     X = np.load(DATA_PATH / "features.npy")
     y = np.load(DATA_PATH / "labels.npy")
-    
-    y = y.reshape(-1,1)
-    
+
+    y = y.reshape(-1, 1)
+
     # we don't need X_test, y_test to check the Trainer works
     X_train, X_val, y_train, y_val = train_test_split(
-        X, 
-        y, 
-        test_size=0.33, 
-        random_state=42
+        X, y, test_size=0.33, random_state=42
     )
-    
+
     # wrap data in Dataset
     train_wrapper = DataWrapper(
-        X_train, 
-        y_train, 
-        dtype_X='float', 
-        dtype_y='float'
+        X_train, y_train, dtype_X="float", dtype_y="float"
     )
-    val_wrapper = DataWrapper(X_val, y_val, dtype_X='float', dtype_y='float')
-    
+    val_wrapper = DataWrapper(X_val, y_val, dtype_X="float", dtype_y="float")
+
     # torch Loaders
     train_loader = DataLoader(train_wrapper, batch_size=32)
     val_loader = DataLoader(val_wrapper, batch_size=32)
@@ -89,7 +81,7 @@ def test_earlystopping(train_config):
         model=model,
         criterion=criterion,
         optimizer=optimizer,
-        callbacks=[early_stopping]
+        callbacks=[early_stopping],
     )
 
     params_dict = trainer.internal_state.get_state_dict()
@@ -128,7 +120,7 @@ def test_logger_callback(caplog, train_config):
         model=model,
         criterion=criterion,
         optimizer=optimizer,
-        callbacks=[logger]
+        callbacks=[logger],
     )
 
     trainer.fit(train_loader, val_loader, epochs=10)
@@ -137,7 +129,9 @@ def test_logger_callback(caplog, train_config):
     assert caplog.records[0].levelname == "INFO", msg
 
     msg = "Logger not stating where the training is running."
-    assert caplog.records[0].message.startswith("Starting training process"), msg
+    assert caplog.records[0].message.startswith(
+        "Starting training process"
+    ), msg
 
     log_msg = "Epoch 1/10 | "
     msg = "Logger not logging first epoch correctly"
@@ -146,7 +140,9 @@ def test_logger_callback(caplog, train_config):
     assert "| Time/epoch:" in caplog.records[1].message, msg
 
     msg = "Logger not logging end of training time"
-    assert caplog.records[2].message.startswith("End of training. Total time: "), msg
+    assert caplog.records[2].message.startswith(
+        "End of training. Total time: "
+    ), msg
 
 
 @pytest.mark.xfail
@@ -164,22 +160,17 @@ def test_learning_rate_scheduler(train_config):
     ) = train_config
 
     sch = LearningRateScheduler(
-        scheduler=optim.lr_scheduler.StepLR(
-            optimizer,
-            step_size=50,
-            gamma=0.9
-        )
+        scheduler=optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.9)
     )
 
     trainer = Trainer(
-        model=model,
-        criterion=criterion,
-        optimizer=optimizer,
-        callbacks=[sch]
+        model=model, criterion=criterion, optimizer=optimizer, callbacks=[sch]
     )
 
     trainer.fit(train_loader, val_loader, epochs=25)
-    obtained_lr = trainer.internal_state.get_state_dict()[ParamsDict.EPOCH_HISTORY]['learning_rate']
+    obtained_lr = trainer.internal_state.get_state_dict()[
+        ParamsDict.EPOCH_HISTORY
+    ]["learning_rate"]
 
     msg = "LR values are not monotonically decreasing."
     assert check_monotonically_decreasing(obtained_lr), msg
@@ -202,7 +193,6 @@ def test_rich_progress_bar():
 
 @pytest.mark.fail
 def test_callback_handler():
-
     class CallbackTester(Callback):
         def __init__(self) -> None:
             super(CallbackTester, self).__init__()
@@ -230,7 +220,6 @@ def test_callback_handler():
 
         def on_fit_end(self, params_dict: dict) -> str:
             expected = "on_fit_end"
-
 
     # -------------------------------------------------------------------------
     callback = CallbackTester()

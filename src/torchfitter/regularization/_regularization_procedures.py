@@ -70,7 +70,9 @@ class L2Regularization(RegularizerBase):
         )"""
         return rpr
 
-    def compute_penalty(self, named_parameters, device: Union[str, torch.device]):
+    def compute_penalty(
+        self, named_parameters, device: Union[str, torch.device]
+    ):
         # Initialize with tensor, cannot be scalar
         penalty_term = torch.zeros(1, 1, requires_grad=True).to(device)
 
@@ -86,9 +88,9 @@ class L2Regularization(RegularizerBase):
 class ElasticNetRegularization(RegularizerBase):
     r"""Linear combination of L1 and L2.
 
-    According to [1], the lasso penalty is somewhat indifferent to the choice 
-    among a set of strong but correlated variables. The ridge penalty, on the 
-    other hand, tends to shrink the coefficients of correlated variables toward 
+    According to [1], the lasso penalty is somewhat indifferent to the choice
+    among a set of strong but correlated variables. The ridge penalty, on the
+    other hand, tends to shrink the coefficients of correlated variables toward
     each other. Elastic net combines both using a weighting factor:
 
     .. math::
@@ -114,6 +116,7 @@ class ElasticNetRegularization(RegularizerBase):
     .. [1] Trevor Hastie, Robert Tibshirani, Jerome Friedman - The Elements of
        Statistical Learning.
     """
+
     def __init__(self, regularization_rate, alpha, biases=False):
         super(ElasticNetRegularization, self).__init__(
             regularization_rate, biases
@@ -138,6 +141,8 @@ class ElasticNetRegularization(RegularizerBase):
             else:
                 l1 = param.norm(p=1)
                 l2 = param.norm(p=2)
-                penalty_term = penalty_term + (self.alpha * l1 + (1 - self.alpha ) * l2)
+                penalty_term = penalty_term + (
+                    self.alpha * l1 + (1 - self.alpha) * l2
+                )
 
         return self.rate * penalty_term

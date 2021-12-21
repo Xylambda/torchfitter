@@ -20,7 +20,7 @@ def save_pickle(obj, path, protocol=pickle.HIGHEST_PROTOCOL):
         Used pickle protocol.
 
     """
-    with open(path, 'wb') as handle:
+    with open(path, "wb") as handle:
         pickle.dump(obj, handle, protocol=protocol)
 
 
@@ -39,7 +39,7 @@ def load_pickle(path):
         Loaded object.
 
     """
-    with open(path, 'rb') as handle:
+    with open(path, "rb") as handle:
         obj = pickle.load(handle)
 
     return obj
