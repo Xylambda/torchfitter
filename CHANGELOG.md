@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 - Add possibility to set the log level of the callbacks.
 - Add stochastic weight averaging callback.
+- Add `train_test_val_split`.
 
 ### Changed
 

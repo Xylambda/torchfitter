@@ -4,7 +4,7 @@ Preprocessing functions.
 import math
 import torch
 import numpy as np
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split as __tr_test_split
 
 
 __all__ = ["numpy_to_torch", "train_test_val_split"]
@@ -105,7 +105,7 @@ def train_test_val_split(
     assert math.isclose(_sum, 1), msg
 
     test_size = 1 - train_ratio
-    X_train, X_test, y_train, y_test = train_test_split(
+    X_train, X_test, y_train, y_test = __tr_test_split(
         X,
         y,
         test_size=test_size,
@@ -115,7 +115,7 @@ def train_test_val_split(
     )
 
     val_size = test_ratio / (test_ratio + validation_ratio)
-    X_val, X_test, y_val, y_test = train_test_split(
+    X_val, X_test, y_val, y_test = __tr_test_split(
         X_test,
         y_test,
         test_size=val_size,

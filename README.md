@@ -8,6 +8,7 @@
 ![GitHub issues](https://img.shields.io/github/issues/Xylambda/torchfitter?style=badge)
 ![workflow](https://github.com/Xylambda/torchfitter/actions/workflows/cicd.yml/badge.svg)
 [![doc](https://img.shields.io/badge/DOCS-documentation-blue.svg?style=badge)](https://xylambda.github.io/torchfitter/)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg?style=badge)](https://github.com/psf/black)
 
 `torchfitter` is a simple library to ease the training of PyTorch models. It 
 features a class called `Trainer` that includes the basic functionality to fit 
