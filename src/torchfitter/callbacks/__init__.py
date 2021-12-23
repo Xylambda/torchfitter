@@ -2,9 +2,10 @@
 
 from . import base
 from ._callbacks import (
+    GPUStats,
     EarlyStopping,
     LoggerCallback,
-    LearningRateScheduler,
-    GPUStats,
     RichProgressBar,
+    LearningRateScheduler,
+    StochasticWeightAveraging
 )

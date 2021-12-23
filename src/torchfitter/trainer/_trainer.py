@@ -46,11 +46,12 @@ class Trainer:
         example, passing `[MeanSquaredError()]` will be registered as
         `MeanSquaredError`.
     accelerator : accelerate.Accelerator
-        Accelerator object from 'accelerate'.
+        Accelerator object from 'accelerate'. If no object is passed, the 
+        trainer will create an instance with the default parameters.
     accumulate_iter : int, optional, default: 1
         Accumulate gradients every 'accumulate_iter' iterations. The default
         value does not accumulate the gradients.
-    gradient_clipping : str or None, optional, {None, 'norm', 'value'}
+    gradient_clipping : {None, 'norm', 'value'}
         Norm gradient clipping of value gradient clipping. If None, gradient
         clipping won't be applied.
     gradient_clipping_kwargs : dict, optional, default: None

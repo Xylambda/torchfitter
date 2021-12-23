@@ -29,6 +29,10 @@ multiple experiments for different random seeds.
 pip install torchfitter
 ```
 
+This library does not ship CUDA nor XLA. Follow the 
+[official PyTorch documentarion](https://pytorch.org/get-started/locally/) for
+more information about how to install CUDA binaries.
+
 **Developer**
 ```bash
 git clone https://github.com/Xylambda/torchfitter.git

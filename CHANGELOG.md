@@ -14,10 +14,16 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 ### Changed
 
 - Change `with torch.no_grad()` for `@torch.no_grad()` in trainer.
+- Format code with [Black](https://github.com/psf/black).
+- Reorganize `utils` module.
 
 ### Removed 
 
 - Remove `reset_parameters` method from callbacks.
+
+### Fixed
+
+- Fix `RichProgressBar` not logging appropiate values.
 
 
 ## [4.0.0] - 2021-12-26

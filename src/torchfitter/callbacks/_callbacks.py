@@ -111,7 +111,7 @@ class LoggerCallback(Callback):
 
     def on_fit_start(self, params_dict):
         dev = params_dict[ParamsDict.DEVICE]
-        logging.info(f"Starting training process on {dev}")
+        self.logger.info(f"Starting training process on {dev}")
 
     def on_epoch_end(self, params_dict) -> None:
         epoch_number = params_dict[ParamsDict.EPOCH_NUMBER]
@@ -121,17 +121,18 @@ class LoggerCallback(Callback):
         epoch_time = params_dict[ParamsDict.EPOCH_TIME]
 
         msg = (
-            f"Epoch {epoch_number}/{total_epochs} | Train loss: {train_loss:.5f} | Validation loss {val_loss:.5f} | "
+            f"Epoch {epoch_number}/{total_epochs} | Train loss: "
+            f"{train_loss:.5f} | Validation loss {val_loss:.5f} | "
             f"Time/epoch: {epoch_time:.2f} s"
         )
 
         if epoch_number % self.update_step == 0 or epoch_number == 1:
-            logging.info(msg)
+            self.logger.info(msg)
 
     def on_fit_end(self, params_dict):
         total_time = params_dict[ParamsDict.TOTAL_TIME]
         # final message
-        logging.info(
+        self.logger.info(
             f"""End of training. Total time: {total_time:0.5f} seconds"""
         )
 
@@ -198,9 +199,8 @@ class LearningRateScheduler(Callback):
     def on_train_step_end(self, params_dict: dict) -> None:
         if self.metric is not None:
             key = "train" if self.on_train else "validation"
-            metric = params_dict[ParamsDict.EPOCH_HISTORY][self.metric][key][
-                -1
-            ]
+            epoch_hist = params_dict[ParamsDict.EPOCH_HISTORY]
+            metric = epoch_hist[self.metric][key][-1]
             self.scheduler.step(metric)
         else:
             self.scheduler.step()
@@ -382,8 +382,9 @@ class StochasticWeightAveraging(Callback):
     """
     Applies a stochastic weight averaging to the training process. If you were
     to use a learning rate scheduler in addition to stochastic averaging, you
-    must pass it to the constructor of this class instead of creating a
-    callback.
+    must pass it to the constructor of this class instead of creating an
+    individual callback for the "standard" lr scheduler. See `Examples` 
+    section.
 
     Parameters
     -----------
@@ -401,11 +402,6 @@ class StochasticWeightAveraging(Callback):
         Whether to watch the train version of the metric (True) or the
         validation version of the metric (False)
 
-    Attributes
-    ----------
-    swa_model : torch.nn.Module
-        Stochastic weighted averaged model.
-
     References
     ----------
     .. [1] Pavel Izmailov, Andrew Gordon Wilson and Vincent Queneneville-Belair
@@ -422,8 +418,12 @@ class StochasticWeightAveraging(Callback):
     >>> swa_start = 160
     >>> scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=300)
     >>> swa_scheduler = SWALR(optimizer, swa_lr=0.05)
-    >>> swa_callback = StochasticWeightAveraging(swa_scheduler, swa_start)
+    >>> swa_callback = StochasticWeightAveraging(swa_scheduler, swa_start, scheduler=scheduler)
     >>> trainer = Trainer(callbacks=[swa_callback], **kwargs)
+    >>> history = trainer.fit(...)
+
+    Now we can the SWA model by simply calling:
+    >>> swa_model = swa_callback.get_swa_model()
     """
 
     def __init__(
@@ -456,7 +456,7 @@ class StochasticWeightAveraging(Callback):
 
     def __run_scheduler(self, params_dict: dict) -> None:
         """
-        Run appropiate scheduler depending on the epoch number
+        Run appropiate scheduler depending on the epoch number.
         """
         epoch = params_dict[ParamsDict.EPOCH_NUMBER]
         model = params_dict[ParamsDict.MODEL]
@@ -469,9 +469,8 @@ class StochasticWeightAveraging(Callback):
             # run "standard" scheduler
             if self.metric is not None:
                 key = "train" if self.on_train else "validation"
-                metric = params_dict[ParamsDict.EPOCH_HISTORY][self.metric][
-                    key
-                ][-1]
+                epoch_hist = params_dict[ParamsDict.EPOCH_HISTORY]
+                metric = epoch_hist[self.metric][key][-1]
                 self.scheduler.step(metric)
             else:
                 self.scheduler.step()
