@@ -24,6 +24,7 @@ setup(
         "rich",
         "numpy",
         "accelerate",
+        "scikit-learn",
         "torchmetrics",
         "torch>=1.1.0",
     ],
