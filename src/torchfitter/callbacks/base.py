@@ -21,7 +21,10 @@ class Callback:
     """
 
     def __init__(self):
+        self.log_name = 'Callback'
         self.logger = get_logger(name=type(self).__name__)
+        level = self.logger.level
+        logging.basicConfig(level=level)
 
     def set_log_level(self, log_level) -> None:
         """
@@ -33,6 +36,7 @@ class Callback:
             Logging level.
         """
         self.logger.setLevel(level=log_level)
+        logging.basicConfig(level=log_level)
 
     def on_train_step_start(self, params_dict: dict) -> None:
         """Called at the start of a training step.

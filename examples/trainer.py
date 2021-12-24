@@ -27,60 +27,64 @@ np.random.seed(0)
 
 DATA_PATH = Path(os.path.abspath("")).parent / "tests/data"
 
-# -----------------------------------------------------------------------------
-X = np.load(DATA_PATH / "features.npy")
-y = np.load(DATA_PATH / "labels.npy")
-y = y.reshape(-1, 1)
+
+def main():
+    # -------------------------------------------------------------------------
+    X = np.load(DATA_PATH / "features.npy")
+    y = np.load(DATA_PATH / "labels.npy")
+    y = y.reshape(-1, 1)
 
 
-# simplest case of cross-validation
-X_train, X_val, y_train, y_val = train_test_split(
-    X, y, test_size=0.33, random_state=42
-)
+    # simplest case of cross-validation
+    X_train, X_val, y_train, y_val = train_test_split(
+        X, y, test_size=0.33, random_state=42
+    )
 
-# -----------------------------------------------------------------------------
-model = nn.Linear(in_features=1, out_features=1)
+    # -------------------------------------------------------------------------
+    model = nn.Linear(in_features=1, out_features=1)
 
-regularizer = L1Regularization(regularization_rate=0.01, biases=False)
-criterion = nn.MSELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.005)
+    regularizer = L1Regularization(regularization_rate=0.01, biases=False)
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.005)
 
-# stochastic weight averaging + "standard" scheduler
-swa_sch = SWALR(optimizer, swa_lr=0.05)
-sch = optim.lr_scheduler.StepLR(optimizer, step_size=500, gamma=0.9)
-swa_callback = StochasticWeightAveraging(
-    swa_scheduler=swa_sch, start_epoch=150, scheduler=sch
-)
+    # stochastic weight averaging + "standard" scheduler
+    swa_sch = SWALR(optimizer, swa_lr=0.05)
+    sch = optim.lr_scheduler.StepLR(optimizer, step_size=500, gamma=0.9)
+    swa_callback = StochasticWeightAveraging(
+        swa_scheduler=swa_sch, start_epoch=150, scheduler=sch
+    )
 
-callbacks = [
-    EarlyStopping(patience=100, load_best=True),
-    swa_callback,
-    RichProgressBar(display_step=100, log_lr=False),
-]
+    callbacks = [
+        EarlyStopping(patience=100, load_best=True),
+        swa_callback,
+        RichProgressBar(display_step=100, log_lr=False),
+    ]
 
-metrics = [torchmetrics.MeanSquaredError(), torchmetrics.MeanAbsoluteError()]
+    metrics = [
+        torchmetrics.MeanSquaredError(), torchmetrics.MeanAbsoluteError()
+    ]
 
-# -----------------------------------------------------------------------------
-# wrap data in Dataset
-train_wrapper = DataWrapper(X_train, y_train, dtype_X="float", dtype_y="float")
+    # -------------------------------------------------------------------------
+    # wrap data in Dataset
+    train_wrapper = DataWrapper(
+        X_train, y_train, dtype_X="float", dtype_y="float"
+    )
+    val_wrapper = DataWrapper(X_val, y_val, dtype_X="float", dtype_y="float")
 
-val_wrapper = DataWrapper(X_val, y_val, dtype_X="float", dtype_y="float")
+    # torch Loaders
+    train_loader = DataLoader(train_wrapper, batch_size=64, pin_memory=True)
+    val_loader = DataLoader(val_wrapper, batch_size=64, pin_memory=True)
 
-# torch Loaders
-train_loader = DataLoader(train_wrapper, batch_size=64, pin_memory=True)
-val_loader = DataLoader(val_wrapper, batch_size=64, pin_memory=True)
+    # -------------------------------------------------------------------------
+    trainer = Trainer(
+        model=model,
+        criterion=criterion,
+        optimizer=optimizer,
+        regularizer=regularizer,
+        callbacks=callbacks,
+        metrics=metrics,
+    )
 
-# -----------------------------------------------------------------------------
-trainer = Trainer(
-    model=model,
-    criterion=criterion,
-    optimizer=optimizer,
-    regularizer=regularizer,
-    callbacks=callbacks,
-    metrics=metrics,
-)
-
-if __name__ == "__main__":
     # -------------------------------------------------------------------------
     # argument parsing
     parser = argparse.ArgumentParser("")
@@ -141,3 +145,7 @@ if __name__ == "__main__":
     ax[1].grid()
     ax[1].legend()
     plt.show()
+
+
+if __name__ == "__main__":
+    main()

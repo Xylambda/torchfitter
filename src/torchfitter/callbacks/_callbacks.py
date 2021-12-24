@@ -1,6 +1,5 @@
 """ Callbacks for the manager class """
 import torch
-import logging
 import subprocess
 from typing import List
 from .base import Callback
@@ -36,12 +35,7 @@ class EarlyStopping(Callback):
         self.patience = patience
         self.load_best = load_best
 
-        # to restart callback state
-        self.__restart_dict = {
-            "patience": patience,
-            "load_best": load_best,
-            "path": path,  # not really necessary
-        }
+        self.log_name = 'EarlyStopping'
 
     def __repr__(self) -> str:
         return f"EarlyStopping(patience={self.patience}, load_best={self.load_best})"
@@ -50,11 +44,6 @@ class EarlyStopping(Callback):
         self.wait = 0
         self.stopped_epoch = 0
         self.best = float("inf")
-
-        # update __restart_dict
-        self.__restart_dict["wait"] = 0
-        self.__restart_dict["stopped_epoch"] = 0
-        self.__restart_dict["best"] = float("inf")
 
     def on_epoch_end(self, params_dict):
         current_loss = params_dict[ParamsDict.VAL_LOSS]
@@ -78,11 +67,11 @@ class EarlyStopping(Callback):
                 if self.load_best:
                     best_params = torch.load(self.path)
                     model.load_state_dict(best_params)
-                    logging.info("Best observed parameters loaded.")
+                    self.logger.info("Best observed parameters loaded.")
 
     def on_fit_end(self, params_dict):
         if self.stopped_epoch > 0:
-            logging.info(
+            self.logger.info(
                 f"Early stopping applied at epoch: {self.stopped_epoch}"
             )
 
@@ -111,6 +100,8 @@ class LoggerCallback(Callback):
         super(LoggerCallback, self).__init__()
         self.update_step = update_step
         self.prec = precision
+
+        self.log_name = 'LoggerCallback'
 
     def on_fit_start(self, params_dict):
         dev = params_dict[ParamsDict.DEVICE]
@@ -249,6 +240,8 @@ class GPUStats(Callback):
         self.format = format
         self.update_step = update_step
 
+        self.log_name = 'GPU Stats'
+
     def on_epoch_end(self, params_dict):
         epoch_number = params_dict[ParamsDict.EPOCH_NUMBER]
 
@@ -257,7 +250,7 @@ class GPUStats(Callback):
                 queries=self.queries, format=self.format
             )
             msg = " | ".join(map(str, stdout))  # unpack and format
-            logging.info(msg)
+            self.logger.info(msg)
 
     def _get_queries(self, queries, format):
         stdout = []
@@ -297,13 +290,15 @@ class RichProgressBar(Callback):
     """
 
     def __init__(
-        self, display_step: int = 1, log_lr: bool = False, precision: int = 5
+        self, display_step: int = 1, log_lr: bool = False, precision: int = 2
     ):
         super(RichProgressBar, self).__init__()
 
         self.display_step = display_step
         self.prec = precision
         self.log_lr = log_lr
+
+        self.log_name = 'Rich Bar'
 
     def on_train_batch_end(self, params_dict: dict) -> None:
         epoch = params_dict[ParamsDict.EPOCH_NUMBER]
@@ -363,14 +358,14 @@ class RichProgressBar(Callback):
                 if text_format:  # not empty
                     text_format = (
                         f"{text_format} • {metric} > Train: "
-                        f"{train_metric:.{self.prec}f} | "
-                        f"Validation: {val_metric:.{self.prec}f}"
+                        f"{train_metric:.{self.prec}e} | "
+                        f"Validation: {val_metric:.{self.prec}e}"
                     )
                 else:
                     text_format = (
                         f"{metric} > Train: "
-                        f"{train_metric:.{self.prec}f} | Validation: "
-                        f"{val_metric:.{self.prec}f}"
+                        f"{train_metric:.{self.prec}e} | Validation: "
+                        f"{val_metric:.{self.prec}e}"
                     )
             else:
                 if self.log_lr:
