@@ -4,7 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
-## [4.1.0] - 2021-12-26
+## [4.1.1] - 2021-12-24
+
+### Added
+
+- Add PyPi deployment to the CI/CD.
+
+### Fixed
+
+- Fix `CHANGELOG.md` release dates.
+
+## [4.1.0] - 2021-12-24
 
 ### Added
 
@@ -29,7 +39,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 - Fix log level not being correctly set.
 
 
-## [4.0.0] - 2021-12-26
+## [4.0.0] - 2021-12-16
 
 ### Added
 
