@@ -17,11 +17,12 @@ from torchfitter.testing import (
     check_monotonically_decreasing,
 )
 from torchfitter.callbacks import (
+    GPUStats,
     EarlyStopping,
     LoggerCallback,
-    LearningRateScheduler,
-    GPUStats,
     RichProgressBar,
+    LearningRateScheduler,
+    StochasticWeightAveraging
 )
 
 from torchfitter.callbacks.base import CallbackHandler, Callback
@@ -145,11 +146,6 @@ def test_logger_callback(caplog, train_config):
     ), msg
 
 
-@pytest.mark.xfail
-def test_progress_bar_logger():
-    pass
-
-
 def test_learning_rate_scheduler(train_config):
     (
         train_loader,
@@ -176,22 +172,27 @@ def test_learning_rate_scheduler(train_config):
     assert check_monotonically_decreasing(obtained_lr), msg
 
 
-@pytest.mark.xfail
+@pytest.mark.xfail(reason="Test not implemented")
 def test_reduce_lr_on_plateau():
     pass
 
 
-@pytest.mark.xfail
+@pytest.mark.xfail(reason="Test not implemented")
 def test_gpu_stats():
     pass
 
 
-@pytest.mark.xfail
+@pytest.mark.xfail(reason="Test not implemented")
 def test_rich_progress_bar():
     pass
 
 
-@pytest.mark.fail
+@pytest.mark.xfail(reason="Test not implemented")
+def test_stochastic_weight_averaging():
+    pass
+
+
+@pytest.mark.fail(reason="Test not implemented")
 def test_callback_handler():
     class CallbackTester(Callback):
         def __init__(self) -> None:

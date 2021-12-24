@@ -103,11 +103,14 @@ class LoggerCallback(Callback):
     ----------
     update_step : int, optional, default: 50
         Logs will be performed every 'update_step'.
+    precision : int, optional, default: 2
+        Number of decimals in the numbers.
     """
 
-    def __init__(self, update_step):
+    def __init__(self, update_step, precision=2):
         super(LoggerCallback, self).__init__()
         self.update_step = update_step
+        self.prec = precision
 
     def on_fit_start(self, params_dict):
         dev = params_dict[ParamsDict.DEVICE]
@@ -120,10 +123,11 @@ class LoggerCallback(Callback):
         train_loss = params_dict[ParamsDict.TRAIN_LOSS]
         epoch_time = params_dict[ParamsDict.EPOCH_TIME]
 
+        prec = self.prec
         msg = (
             f"Epoch {epoch_number}/{total_epochs} | Train loss: "
-            f"{train_loss:.5f} | Validation loss {val_loss:.5f} | "
-            f"Time/epoch: {epoch_time:.2f} s"
+            f"{train_loss:.{prec}e} | Validation loss {val_loss:.{prec}e} | "
+            f"Time/epoch: {epoch_time:.{prec}e} s"
         )
 
         if epoch_number % self.update_step == 0 or epoch_number == 1:
@@ -477,7 +481,7 @@ class StochasticWeightAveraging(Callback):
 
     def on_fit_end(self, params_dict: dict) -> None:
         train_loader = params_dict[ParamsDict.TRAIN_LOADER]
-        torch.optim.swa_utils.update_bn(train_loader, self.swa_scheduler)
+        torch.optim.swa_utils.update_bn(train_loader, self.__swa_model)
 
     def get_swa_model(self) -> torch.nn.Module:
         """

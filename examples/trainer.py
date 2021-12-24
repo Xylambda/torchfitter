@@ -10,14 +10,15 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 from torch.utils.data import DataLoader
 from torchfitter.trainer import Trainer
+from torch.optim.swa_utils import SWALR
 from torchfitter.utils.data import DataWrapper
 from torchfitter.conventions import ParamsDict
 from sklearn.model_selection import train_test_split
 from torchfitter.regularization import L1Regularization
 from torchfitter.callbacks import (
     EarlyStopping,
-    LearningRateScheduler,
     RichProgressBar,
+    StochasticWeightAveraging,
 )
 
 # -----------------------------------------------------------------------------
@@ -44,15 +45,16 @@ regularizer = L1Regularization(regularization_rate=0.01, biases=False)
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=0.005)
 
+# stochastic weight averaging + "standard" scheduler
+swa_sch = SWALR(optimizer, swa_lr=0.05)
+sch = optim.lr_scheduler.StepLR(optimizer, step_size=500, gamma=0.9)
+swa_callback = StochasticWeightAveraging(
+    swa_scheduler=swa_sch, start_epoch=150, scheduler=sch
+)
+
 callbacks = [
     EarlyStopping(patience=100, load_best=True),
-    LearningRateScheduler(
-        scheduler=optim.lr_scheduler.StepLR(
-            optimizer, step_size=500, gamma=0.9
-        ),
-        metric=None,  # ParamsDict.LOSS, # use loss criterion
-        on_train=True,
-    ),
+    swa_callback,
     RichProgressBar(display_step=100, log_lr=False),
 ]
 
