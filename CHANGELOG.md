@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 - Add possibility to set the log level of the callbacks.
 - Add stochastic weight averaging callback.
 - Add `train_test_val_split`.
+- Add `log_name` attribute to `tochfitter.callbacks.base.Callback`.
 
 ### Changed
 
@@ -25,6 +26,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 ### Fixed
 
 - Fix `RichProgressBar` not logging appropiate values.
+- Fix log level not being correctly set.
 
 
 ## [4.0.0] - 2021-12-26

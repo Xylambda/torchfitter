@@ -22,7 +22,7 @@ class Callback:
 
     def __init__(self):
         self.log_name = 'Callback'
-        self.logger = get_logger(name=type(self).__name__)
+        self.logger = get_logger(name=self.log_name)
         level = self.logger.level
         logging.basicConfig(level=level)
 

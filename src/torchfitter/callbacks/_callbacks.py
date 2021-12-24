@@ -140,8 +140,8 @@ class LearningRateScheduler(Callback):
     training step has been performed; i.e., `on_train_step_end`.
 
     If you were to use a learning rate scheduler in addition to stochastic
-    averaging, you must pass it to the constructor of this class instead of
-    creating a callback.
+    averaging, you must pass both to an instance of `StochasticWeightAveraging`
+    callback instance of creating an instance of `LearningRateScheduler`.
 
     Parameters
     ----------
@@ -202,9 +202,10 @@ class LearningRateScheduler(Callback):
 
 
 class GPUStats(Callback):
-    """
-    Callback that logs GPU stats in order to monitor them. The list of queries
-    can be customized
+    """GPU stats logger. 
+    
+    The list of available queries can be found on NVIDIA smi queries. See 
+    `Notes` section for more information.
 
     Parameters
     ----------
@@ -378,12 +379,12 @@ class RichProgressBar(Callback):
 
 
 class StochasticWeightAveraging(Callback):
-    """
-    Applies a stochastic weight averaging to the training process. If you were
-    to use a learning rate scheduler in addition to stochastic averaging, you
-    must pass it to the constructor of this class instead of creating an
-    individual callback for the "standard" lr scheduler. See `Examples` 
-    section.
+    """Applies a stochastic weight averaging to the training process. 
+    
+    If you were to use a learning rate scheduler in addition to stochastic 
+    averaging, you must pass both to the constructor of this class instead of 
+    creating an individual callback for the standard lr scheduler. See 
+    `Examples` section.
 
     Parameters
     -----------
