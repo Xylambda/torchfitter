@@ -4,6 +4,50 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## [4.1.0] - 2021-12-26
+
+### Added
+
+- Add possibility to set the log level of the callbacks.
+- Add stochastic weight averaging callback.
+- Add `train_test_val_split`.
+- Add `log_name` attribute to `tochfitter.callbacks.base.Callback`.
+
+### Changed
+
+- Change `with torch.no_grad()` for `@torch.no_grad()` in trainer.
+- Format code with [Black](https://github.com/psf/black).
+- Reorganize `utils` module.
+
+### Removed 
+
+- Remove `reset_parameters` method from callbacks.
+
+### Fixed
+
+- Fix `RichProgressBar` not logging appropiate values.
+- Fix log level not being correctly set.
+
+
+## [4.0.0] - 2021-12-26
+
+### Added
+
+- Add more hooks to the callback system.
+- Rich progress bar as callback.
+- accelerate.Accelerator backend.
+- `trainer.Trainer.fit` now returns a dictionary with the train history.
+
+### Changed
+
+- Update README.
+- Update metrics handling.
+
+### Removed 
+
+- Remove callback type.
+
+
 ## [3.1.0] - 2021-07-27
 
 ### Fixed

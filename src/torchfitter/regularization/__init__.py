@@ -4,7 +4,7 @@
 from ._regularization_procedures import (
     L1Regularization,
     L2Regularization,
-    ElasticNetRegularization
+    ElasticNetRegularization,
 )
 
 # relative subpackages import
@@ -12,8 +12,8 @@ from . import base
 from . import _regularization_procedures
 
 __all__ = [
-    'L1Regularization',
-    'L2Regularization',
-    'ElasticNetRegularization',
-    'base'
+    "L1Regularization",
+    "L2Regularization",
+    "ElasticNetRegularization",
+    "base",
 ]

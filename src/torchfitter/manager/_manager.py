@@ -15,11 +15,12 @@ class Manager:
     seeds : iterable of ints
         Seeds to use in the experiments.
     """
+
     def __init__(
-        self, 
-        seeds: Iterable[int], 
-        folder_name: str, 
-        deterministic: bool=False
+        self,
+        seeds: Iterable[int],
+        folder_name: str,
+        deterministic: bool = False,
     ):
         self.seeds = seeds
         self.folder_name = folder_name
@@ -27,14 +28,14 @@ class Manager:
 
         if str(self.folder_name) not in os.listdir():
             os.mkdir(self.folder_name)
-        
+
     def run_experiments(self, experiment_func: Callable) -> None:
         """Run 'experiment_func' for each random seed.
 
-        All the logic, including model and optimizer states saving, must be 
+        All the logic, including model and optimizer states saving, must be
         coded in the 'experiment_func' variable.
 
-        'experiment_func' must receive 2 arguments: 'seed' and 'folder_name'. 
+        'experiment_func' must receive 2 arguments: 'seed' and 'folder_name'.
         These arguments may be used by the user to create the necessary folders
         to save the experiment.
 

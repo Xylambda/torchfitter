@@ -8,6 +8,7 @@
 ![GitHub issues](https://img.shields.io/github/issues/Xylambda/torchfitter?style=badge)
 ![workflow](https://github.com/Xylambda/torchfitter/actions/workflows/cicd.yml/badge.svg)
 [![doc](https://img.shields.io/badge/DOCS-documentation-blue.svg?style=badge)](https://xylambda.github.io/torchfitter/)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg?style=badge)](https://github.com/psf/black)
 
 `torchfitter` is a simple library to ease the training of PyTorch models. It 
 features a class called `Trainer` that includes the basic functionality to fit 
@@ -26,9 +27,12 @@ multiple experiments for different random seeds.
 ## Installation
 **Normal user**
 ```bash
-git clone https://github.com/Xylambda/torchfitter.git
-pip install torchfitter/.
+pip install torchfitter
 ```
+
+This library does not ship CUDA nor XLA. Follow the 
+[official PyTorch documentarion](https://pytorch.org/get-started/locally/) for
+more information about how to install CUDA binaries.
 
 **Developer**
 ```bash

@@ -27,30 +27,30 @@ def change_model_params(
 
 def compute_forward_gradient(module: torch.nn.Module, *tensors) -> dict:
     """Computes forward gradient.
-    
+
     This function helps to test the gradient computation of a nn.Module class.
 
     It computes the gradients for the given variables. The result of a forward
     must be a torch.Tensor with the shape (1,1), otherwise is not possible to
     compute the gradients.
-    
+
     Parameters
     ----------
     module : torch.nn.Module
         The module function with a defined forward.
     *tensors : tuple
         The input tensors to compute the gradients of.
-        
+
     Returns
     -------
     gradients : dict
         A dictionary whose keys are a list of sorted integers and whose values
-        are the gradients for each passed tensor (in the same order they were 
+        are the gradients for each passed tensor (in the same order they were
         passed).
-    
+
     Note
     ----
-    This function returns the gradients for the leaf variables, not the 
+    This function returns the gradients for the leaf variables, not the
     intermediate gradients.
 
     """
@@ -58,10 +58,10 @@ def compute_forward_gradient(module: torch.nn.Module, *tensors) -> dict:
     for t in tensors:
         if not t.requires_grad:
             raise ValueError("Tensors must have 'requires_grad' activated.")
-    
+
     # create computational graph
     forward = module(*tensors)
-    
+
     # compute gradients
     if forward.shape != torch.Size([1]) and forward.shape != torch.Size([]):
         raise ValueError(
@@ -71,21 +71,21 @@ def compute_forward_gradient(module: torch.nn.Module, *tensors) -> dict:
         )
     else:
         forward.backward()
-    
+
     # store gradient for each passed tensor
     gradients = {}
     for i, t in enumerate(tensors):
         gradients[i] = t.grad
-    
+
     return gradients
 
 
 def check_monotonically_decreasing(
-    iterable: Iterable, strict: bool=False
+    iterable: Iterable, strict: bool = False
 ) -> bool:
     """Check if the given iterable is monotonically decreasing.
 
-    The function allows to check strictly (all i + 1 are greater than i) or 
+    The function allows to check strictly (all i + 1 are greater than i) or
     non-strictly (all i + 1 are greater or equal than i).
 
     Parameters
@@ -93,7 +93,7 @@ def check_monotonically_decreasing(
     iterable : array-like
         Iterable object to check.
     strict : bool, optional, default: False
-        Whether to strictly check monotonically decreasing (True) or not 
+        Whether to strictly check monotonically decreasing (True) or not
         (False).
 
     Returns

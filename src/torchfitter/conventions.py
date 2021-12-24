@@ -13,10 +13,6 @@ class ParamsDict:
         The current validation loss.
     OPTIMIZER : str
         Algorithm used to optimize the model.
-    BATCH_TRAIN_LOSS : str
-        Train loss of last computed training batch.
-    BATCH_VAL_LOSS : str
-        Validation loss of last computed validation batch.
     EPOCH_TIME : str
         The time it took to compute the current epoch.
     EPOCH_NUMBER : str
@@ -63,11 +59,10 @@ class ParamsDict:
     VAL_BATCH_IDX : str
         Current validation batch index.
     """
+
     TRAIN_LOSS = "training_loss"
     VAL_LOSS = "validation_loss"
-    OPTIMIZER = 'optimizer'
-    BATCH_TRAIN_LOSS = ""
-    BATCH_VAL_LOSS = ""
+    OPTIMIZER = "optimizer"
     EPOCH_TIME = "epoch_time"
     EPOCH_NUMBER = "epoch_number"
     TOTAL_EPOCHS = "total_epochs"
@@ -76,13 +71,13 @@ class ParamsDict:
     DEVICE = "device"
     MODEL = "model"
     ACCELERATOR = "accelerator"
-    BATCH_HISTORY = 'batch_history'
-    EPOCH_HISTORY = 'epoch_history'
-    LOSS = 'loss'
+    BATCH_HISTORY = "batch_history"
+    EPOCH_HISTORY = "epoch_history"
+    LOSS = "loss"
     HISTORY_LR = "learning_rate"
-    TRAIN_LOADER = 'train_loader'
-    TRAIN_BATCH = 'train_batch'
-    TRAIN_BATCH_IDX = 'train_batch_idx'
-    VAL_LOADER = 'validation_loader'
-    VAL_BATCH = 'val_batch'
-    VAL_BATCH_IDX = 'val_batch_idx'
+    TRAIN_LOADER = "train_loader"
+    TRAIN_BATCH = "train_batch"
+    TRAIN_BATCH_IDX = "train_batch_idx"
+    VAL_LOADER = "validation_loader"
+    VAL_BATCH = "val_batch"
+    VAL_BATCH_IDX = "val_batch_idx"
