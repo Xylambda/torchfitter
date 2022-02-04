@@ -561,7 +561,11 @@ class Trainer:
         loss : torch.Tensor
             Loss graph contained in a (1 x 1) torch.Tensor.
         """
+        self.callback_handler.on_loss_step_begin(
+            self.internal_state.get_state_dict()
+        )
         loss = self.criterion(real, target)
+        self.callback_handler.on_loss_step_end()
 
         # apply regularization if any
         if self.regularizer is not None:

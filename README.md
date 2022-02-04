@@ -31,7 +31,7 @@ pip install torchfitter
 ```
 
 This library does not ship CUDA nor XLA. Follow the 
-[official PyTorch documentarion](https://pytorch.org/get-started/locally/) for
+[official PyTorch documentation](https://pytorch.org/get-started/locally/) for
 more information about how to install CUDA binaries.
 
 **Developer**

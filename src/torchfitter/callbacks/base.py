@@ -222,6 +222,32 @@ class Callback:
         """
         pass
 
+    def on_loss_step_begin(self, params_dict: dict) -> None:
+        """Called at the start of the loss step.
+
+        Subclasses should override for any actions to run. The trainer ignores
+        any returned values from this function.
+
+        Parameters
+        ----------
+        params_dict : dict
+            Dictionary containing the parameters of the training process.
+        """
+        pass
+
+    def on_loss_step_end(self, params_dict: dict) -> None:
+        """Called at the end of the loss step.
+
+        Subclasses should override for any actions to run. The trainer ignores
+        any returned values from this function.
+
+        Parameters
+        ----------
+        params_dict : dict
+            Dictionary containing the parameters of the training process.
+        """
+        pass
+
 
 class CallbackHandler(Callback):
     """Trainer callback handler.
@@ -454,3 +480,34 @@ class CallbackHandler(Callback):
         if self.handle_callbacks:
             for callback in self.callbacks_list:
                 callback.on_fit_end(params_dict)
+
+
+    def on_loss_step_begin(self, params_dict: dict) -> None:
+        """Called at the start of the loss step.
+
+        Call this method for all given callbacks list. Any returned values will
+        be ignored by the trainer.
+
+        Parameters
+        ----------
+        params_dict : dict
+            Dictionary containing the parameters of the training process.
+        """
+        if self.handle_callbacks:
+            for callback in self.callbacks_list:
+                callback.on_loss_step_begin(params_dict)
+
+    def on_loss_step_end(self, params_dict: dict) -> None:
+        """Called at the end of the loss step.
+
+        Call this method for all given callbacks list. Any returned values will
+        be ignored by the trainer.
+
+        Parameters
+        ----------
+        params_dict : dict
+            Dictionary containing the parameters of the training process.
+        """
+        if self.handle_callbacks:
+            for callback in self.callbacks_list:
+                callback.on_loss_step_end(params_dict)
