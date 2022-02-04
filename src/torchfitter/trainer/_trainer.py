@@ -565,7 +565,11 @@ class Trainer:
             self.internal_state.get_state_dict()
         )
         loss = self.criterion(real, target)
-        self.callback_handler.on_loss_step_end()
+        
+        # TODO: update loss
+        self.callback_handler.on_loss_step_end(
+            self.internal_state.get_state_dict()
+        )
 
         # apply regularization if any
         if self.regularizer is not None:
