@@ -300,7 +300,7 @@ class Trainer:
         loader = self.accelerator.prepare_data_loader(loader)
         for idx, (feat, lab) in enumerate(loader):
             _pred = self.model(feat)
-            _predictions.append(_predictions)
+            _predictions.append(_pred)
 
         predictions = torch.Tensor(_predictions)
         return predictions
