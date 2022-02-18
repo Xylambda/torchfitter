@@ -3,9 +3,11 @@ import torch
 import logging
 import statistics
 import torchmetrics
-from typing import List, Tuple
+from numpy import ndarray
 from accelerate import Accelerator
+from typing import List, Tuple, Union
 from torchfitter.conventions import ParamsDict
+from torch.utils.data.dataloader import DataLoader
 from torchfitter.regularization.base import RegularizerBase
 from torchfitter.callbacks.base import CallbackHandler, Callback
 from torchfitter.trainer._utils import TrainerInternalState, MetricsHandler
@@ -123,10 +125,7 @@ class Trainer:
             self.internal_state.add_metrics(*names)
 
     def fit(
-        self,
-        train_loader: torch.utils.data.dataloader.DataLoader,
-        val_loader: torch.utils.data.dataloader.DataLoader,
-        epochs: int,
+        self, train_loader: DataLoader, val_loader: DataLoader, epochs: int,
     ) -> dict:
         """Fit the model.
 
@@ -246,6 +245,65 @@ class Trainer:
             ),
         }
         return history
+
+    @torch.no_grad()
+    def predict(
+        self,
+        X: Union[DataLoader, torch.Tensor, ndarray],
+        as_array=False,
+    ) -> Union[torch.Tensor, ndarray]:
+        """
+        Predict function.
+
+        Parameters
+        ----------
+        X : torch.DataLoader, torch.Tensor or numpy.ndarray
+            Data to use to make inference. If 'X' is a DataLoader, 
+            'torchfitter' will assume it generates features and labels.
+        as_array : bool, optional, default: False
+            Whether to output the predictions as a numpy.narray or not.
+
+        Returns
+        -------
+        """
+        if isinstance(X, DataLoader):
+            predictions = self.__predict_loader(X)
+        
+        elif isinstance(X, ndarray):
+            X = torch.from_numpy(X)
+            predictions = self.__predict_tensor(X)
+        
+        elif isinstance(X, torch.Tensor):
+            predictions = self.__predict_tensor(X)
+        
+        else:
+            raise TypeError(f"Not supported data type: {type(X)}")
+
+        if as_array:
+            return predictions.cpu()
+        else:
+            return predictions
+
+    def __predict_tensor(self, tensor: torch.Tensor) -> torch.Tensor:
+        """
+        Make prediction for a given tensor.
+        """
+        device = self.accelerator.device
+        tensor = tensor.to(device)
+        return self.model(tensor)
+
+    def __predict_loader(self, loader: DataLoader) -> torch.Tensor:
+        """
+        Make inference prediction for a given torch.DataLoader.
+        """
+        _predictions = []
+        loader = self.accelerator.prepare_data_loader(loader)
+        for idx, (feat, lab) in enumerate(loader):
+            _pred = self.model(feat)
+            _predictions.append(_predictions)
+
+        predictions = torch.Tensor(_predictions)
+        return predictions
 
     def _prepare_gradient_clipping(self):
         """
