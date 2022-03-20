@@ -62,12 +62,12 @@ class DataWrapper(Dataset):
         if isinstance(X, np.ndarray):
             X = numpy_to_torch(X, dtype_X)
         else:
-            X = X.float()
+            X = getattr(X, dtype_X)()
 
         if isinstance(y, np.ndarray):
             y = numpy_to_torch(y, dtype_y)
         else:
-            y = y.float()
+            y = getattr(X, dtype_y)()
 
         return X, y
 

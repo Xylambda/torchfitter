@@ -1,4 +1,4 @@
-""" 
+"""
 Preprocessing functions.
 """
 import math
@@ -37,7 +37,7 @@ def numpy_to_torch(array: np.ndarray, dtype: str) -> torch.Tensor:
 
     >>> tensor = numpy_to_torch(arr, dtype='long')
     >>> tensor.dtype
-    torch.float32
+    torch.int64
     """
     return getattr(torch.from_numpy(array), dtype)()
 
@@ -45,12 +45,12 @@ def numpy_to_torch(array: np.ndarray, dtype: str) -> torch.Tensor:
 def train_test_val_split(
     X: np.ndarray,
     y: np.ndarray,
-    train_ratio: float=0.70,
-    validation_ratio: float=0.20,
-    test_ratio: float=0.10,
-    random_state: int=42,
-    shuffle: bool=False,
-    stratify=None
+    train_ratio: float = 0.70,
+    validation_ratio: float = 0.20,
+    test_ratio: float = 0.10,
+    random_state: int = 42,
+    shuffle: bool = False,
+    stratify=None,
 ):
     """
     Splits the given dataset into train, validation and test sets.
@@ -71,14 +71,14 @@ def train_test_val_split(
     test_ratio : float, optional, default: 0.10
         Ratio of test set.
     random_state : int, optional, default: 42
-        Controls the shuffling applied to the data before applying the split. 
+        Controls the shuffling applied to the data before applying the split.
         Pass an int for reproducible output across multiple function calls.
     shuffle : bool, optional, default: False
-        Whether or not to shuffle the data before splitting. If shuffle=False 
+        Whether or not to shuffle the data before splitting. If shuffle=False
         then stratify must be None. Shuffle will only be applied in the first
         split.
     stratify : array-like, default: None
-        If not None, data is split in a stratified fashion, using this as the 
+        If not None, data is split in a stratified fashion, using this as the
         class labels. Stratify will only be applied in the first split.
 
     Returns
@@ -111,7 +111,7 @@ def train_test_val_split(
         test_size=test_size,
         random_state=random_state,
         shuffle=shuffle,
-        stratify=stratify
+        stratify=stratify,
     )
 
     val_size = test_ratio / (test_ratio + validation_ratio)
@@ -121,7 +121,7 @@ def train_test_val_split(
         test_size=val_size,
         random_state=random_state,
         shuffle=False,
-        stratify=None
-    ) 
+        stratify=None,
+    )
 
     return X_train, y_train, X_val, y_val, X_test, y_test

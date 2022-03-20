@@ -48,7 +48,7 @@ class Trainer:
         example, passing `[MeanSquaredError()]` will be registered as
         `MeanSquaredError`.
     accelerator : accelerate.Accelerator
-        Accelerator object from 'accelerate'. If no object is passed, the 
+        Accelerator object from 'accelerate'. If no object is passed, the
         trainer will create an instance with the default parameters.
     accumulate_iter : int, optional, default: 1
         Accumulate gradients every 'accumulate_iter' iterations. The default
@@ -125,7 +125,10 @@ class Trainer:
             self.internal_state.add_metrics(*names)
 
     def fit(
-        self, train_loader: DataLoader, val_loader: DataLoader, epochs: int,
+        self,
+        train_loader: DataLoader,
+        val_loader: DataLoader,
+        epochs: int,
     ) -> dict:
         """Fit the model.
 
@@ -169,38 +172,26 @@ class Trainer:
 
         # track total training time
         total_start_time = time.perf_counter()
-        self.callback_handler.on_fit_start(
-            self.internal_state.get_state_dict()
-        )
+        self.callback_handler.on_fit_start(self.state_dict())
 
         # ---- fitting process ----
         epoch = initial_epoch
         stop = False
         while epoch <= epochs and not stop:
-            self.callback_handler.on_epoch_start(
-                self.internal_state.get_state_dict()
-            )
+            self.callback_handler.on_epoch_start(self.state_dict())
 
             # track epoch time
             epoch_start_time = time.perf_counter()
 
             # ------- train step -------
-            self.callback_handler.on_train_step_start(
-                self.internal_state.get_state_dict()
-            )
+            self.callback_handler.on_train_step_start(self.state_dict())
             tr_loss = self.train_step(train_loader)  # actual step
-            self.callback_handler.on_train_step_end(
-                self.internal_state.get_state_dict()
-            )
+            self.callback_handler.on_train_step_end(self.state_dict())
 
             # ------- validation step -------
-            self.callback_handler.on_validation_step_start(
-                self.internal_state.get_state_dict()
-            )
+            self.callback_handler.on_validation_step_start(self.state_dict())
             val_loss = self.validation_step(val_loader)
-            self.callback_handler.on_validation_step_end(
-                self.internal_state.get_state_dict()
-            )
+            self.callback_handler.on_validation_step_end(self.state_dict())
 
             # -------- update internal state to track training --------
             self.internal_state.update_lr_history(
@@ -216,9 +207,7 @@ class Trainer:
                 }
             )
 
-            self.callback_handler.on_epoch_end(
-                self.internal_state.get_state_dict()
-            )
+            self.callback_handler.on_epoch_end(self.state_dict())
 
             epoch += 1
             stop = self.internal_state.get_single_param(
@@ -233,7 +222,7 @@ class Trainer:
         self.internal_state.update_params(
             **{ParamsDict.TOTAL_TIME: total_time}
         )
-        self.callback_handler.on_fit_end(self.internal_state.get_state_dict())
+        self.callback_handler.on_fit_end(self.state_dict())
 
         # construct history object to return
         history = {
@@ -249,61 +238,47 @@ class Trainer:
     @torch.no_grad()
     def predict(
         self,
-        X: Union[DataLoader, torch.Tensor, ndarray],
+        X: Union[torch.Tensor, ndarray],
         as_array=False,
+        dtype: str = "float"
     ) -> Union[torch.Tensor, ndarray]:
         """
         Predict function.
 
         Parameters
         ----------
-        X : torch.DataLoader, torch.Tensor or numpy.ndarray
-            Data to use to make inference. If 'X' is a DataLoader, 
-            'torchfitter' will assume it generates features and labels.
+        X : torch.Tensor or numpy.ndarray
+            Data to use to make inference.
         as_array : bool, optional, default: False
             Whether to output the predictions as a numpy.narray or not.
+        dtype : str, optional, default: "float"
+            Data type to cast input tensor to. 
 
         Returns
         -------
+        predictions : torch.Tensor or numpy.ndarray
+            Predicted values.
         """
-        if isinstance(X, DataLoader):
-            predictions = self.__predict_loader(X)
-        
-        elif isinstance(X, ndarray):
-            X = torch.from_numpy(X)
-            predictions = self.__predict_tensor(X)
-        
-        elif isinstance(X, torch.Tensor):
-            predictions = self.__predict_tensor(X)
-        
-        else:
-            raise TypeError(f"Not supported data type: {type(X)}")
+        if isinstance(X, ndarray):
+            _tensor = torch.from_numpy(X)
+            tensor = getattr(_tensor, dtype)()
+
+        self.callback_handler.on_predict_begin(self.state_dict())
+        predictions = self._predict_tensor(tensor)
+        self.callback_handler.on_predict_end(self.state_dict())
 
         if as_array:
-            return predictions.cpu()
+            return predictions.cpu().numpy()
         else:
             return predictions
 
-    def __predict_tensor(self, tensor: torch.Tensor) -> torch.Tensor:
+    def _predict_tensor(self, tensor: torch.Tensor) -> torch.Tensor:
         """
         Make prediction for a given tensor.
         """
         device = self.accelerator.device
         tensor = tensor.to(device)
         return self.model(tensor)
-
-    def __predict_loader(self, loader: DataLoader) -> torch.Tensor:
-        """
-        Make inference prediction for a given torch.DataLoader.
-        """
-        _predictions = []
-        loader = self.accelerator.prepare_data_loader(loader)
-        for idx, (feat, lab) in enumerate(loader):
-            _pred = self.model(feat)
-            _predictions.append(_pred)
-
-        predictions = torch.Tensor(_predictions)
-        return predictions
 
     def _prepare_gradient_clipping(self):
         """
@@ -385,13 +360,10 @@ class Trainer:
 
         losses = []  # loss as mean of batch losses
         for batch_idx, batch in enumerate(loader):
-            self.callback_handler.on_train_batch_start(
-                self.internal_state.get_state_dict()
-            )
+            self.callback_handler.on_train_batch_start(self.state_dict())
             loss = self.batch_train_step(batch_index=batch_idx, batch=batch)
-            self.callback_handler.on_train_batch_end(
-                self.internal_state.get_state_dict()
-            )
+            self.callback_handler.on_train_batch_end(self.state_dict())
+
             losses.append(loss.item())
 
         # compute accumulated metrics (metric.compute())
@@ -514,15 +486,11 @@ class Trainer:
 
         losses = []  # loss as mean of batch losses
         for batch_idx, batch in enumerate(loader):
-            self.callback_handler.on_validation_batch_start(
-                self.internal_state.get_state_dict()
-            )
+            self.callback_handler.on_validation_batch_start(self.state_dict())
             loss = self.batch_validation_step(
                 batch_index=batch_idx, batch=batch
             )
-            self.callback_handler.on_validation_batch_end(
-                self.internal_state.get_state_dict()
-            )
+            self.callback_handler.on_validation_batch_end(self.state_dict())
             losses.append(loss.item())
 
         # compute accumulated metrics
@@ -619,15 +587,11 @@ class Trainer:
         loss : torch.Tensor
             Loss graph contained in a (1 x 1) torch.Tensor.
         """
-        self.callback_handler.on_loss_step_begin(
-            self.internal_state.get_state_dict()
-        )
+        self.callback_handler.on_loss_step_begin(self.state_dict())
         loss = self.criterion(real, target)
-        
+
         # TODO: update loss
-        self.callback_handler.on_loss_step_end(
-            self.internal_state.get_state_dict()
-        )
+        self.callback_handler.on_loss_step_end(self.state_dict())
 
         # apply regularization if any
         if self.regularizer is not None:
@@ -664,3 +628,15 @@ class Trainer:
         unwrapped_model = self.accelerator.unwrap_model(self.model)
         unwrapped_model.load_state_dict(torch.load(path))
         self.model = unwrapped_model
+
+    def state_dict(self) -> dict:
+        """Return current state dict.
+
+        The state dict will change as the training progresses.
+
+        Returns
+        -------
+        dict
+            A dictionary containing the current state of the trainer.
+        """
+        return self.internal_state.get_state_dict()

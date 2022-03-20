@@ -35,7 +35,7 @@ class EarlyStopping(Callback):
         self.patience = patience
         self.load_best = load_best
 
-        self.log_name = 'EarlyStopping'
+        self.log_name = "EarlyStopping"
 
     def __repr__(self) -> str:
         return f"EarlyStopping(patience={self.patience}, load_best={self.load_best})"
@@ -101,7 +101,7 @@ class LoggerCallback(Callback):
         self.update_step = update_step
         self.prec = precision
 
-        self.log_name = 'LoggerCallback'
+        self.log_name = "LoggerCallback"
 
     def on_fit_start(self, params_dict):
         dev = params_dict[ParamsDict.DEVICE]
@@ -202,9 +202,9 @@ class LearningRateScheduler(Callback):
 
 
 class GPUStats(Callback):
-    """GPU stats logger. 
-    
-    The list of available queries can be found on NVIDIA smi queries. See 
+    """GPU stats logger.
+
+    The list of available queries can be found on NVIDIA smi queries. See
     `Notes` section for more information.
 
     Parameters
@@ -241,7 +241,7 @@ class GPUStats(Callback):
         self.format = format
         self.update_step = update_step
 
-        self.log_name = 'GPU Stats'
+        self.log_name = "GPU Stats"
 
     def on_epoch_end(self, params_dict):
         epoch_number = params_dict[ParamsDict.EPOCH_NUMBER]
@@ -299,7 +299,7 @@ class RichProgressBar(Callback):
         self.prec = precision
         self.log_lr = log_lr
 
-        self.log_name = 'Rich Bar'
+        self.log_name = "Rich Bar"
 
     def on_train_batch_end(self, params_dict: dict) -> None:
         epoch = params_dict[ParamsDict.EPOCH_NUMBER]
@@ -379,11 +379,11 @@ class RichProgressBar(Callback):
 
 
 class StochasticWeightAveraging(Callback):
-    """Applies a stochastic weight averaging to the training process. 
-    
-    If you were to use a learning rate scheduler in addition to stochastic 
-    averaging, you must pass both to the constructor of this class instead of 
-    creating an individual callback for the standard lr scheduler. See 
+    """Applies a stochastic weight averaging to the training process.
+
+    If you were to use a learning rate scheduler in addition to stochastic
+    averaging, you must pass both to the constructor of this class instead of
+    creating an individual callback for the standard lr scheduler. See
     `Examples` section.
 
     Parameters

@@ -30,10 +30,17 @@ DATA_PATH = Path(os.path.abspath("")).parent / "tests/data"
 
 def main():
     # -------------------------------------------------------------------------
+    # argument parsing
+    parser = argparse.ArgumentParser("")
+    parser.add_argument("--epochs", type=int, default=5000)
+
+    args = parser.parse_args()
+    n_epochs = args.epochs
+
+    # -------------------------------------------------------------------------
     X = np.load(DATA_PATH / "features.npy")
     y = np.load(DATA_PATH / "labels.npy")
     y = y.reshape(-1, 1)
-
 
     # simplest case of cross-validation
     X_train, X_val, y_train, y_val = train_test_split(
@@ -86,21 +93,9 @@ def main():
     )
 
     # -------------------------------------------------------------------------
-    # argument parsing
-    parser = argparse.ArgumentParser("")
-    parser.add_argument("--epochs", type=int, default=5000)
-
-    args = parser.parse_args()
-    n_epochs = args.epochs
-
-    # -------------------------------------------------------------------------
-    # fitting process
+    # fitting process and predictions
     history = trainer.fit(train_loader, val_loader, epochs=n_epochs)
-
-    # predictions
-    with torch.no_grad():
-        to_predict = torch.from_numpy(X_val).float()
-        y_pred = model(to_predict).cpu().numpy()
+    y_pred = trainer.predict(X_val, as_array=True)
 
     # -------------------------------------------------------------------------
     # plot predictions, losses and learning rate

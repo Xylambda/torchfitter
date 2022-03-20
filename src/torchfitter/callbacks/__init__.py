@@ -7,5 +7,5 @@ from ._callbacks import (
     LoggerCallback,
     RichProgressBar,
     LearningRateScheduler,
-    StochasticWeightAveraging
+    StochasticWeightAveraging,
 )
