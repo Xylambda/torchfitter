@@ -1,15 +1,14 @@
 """ Callbacks for the manager class """
-import torch
 import subprocess
 from typing import List
-from .base import Callback
-from torchfitter.conventions import ParamsDict
+
+import torch
+from rich.progress import BarColumn, Progress, TimeRemainingColumn
 from torch.optim.swa_utils import AveragedModel
-from rich.progress import (
-    Progress,
-    BarColumn,
-    TimeRemainingColumn,
-)
+
+from torchfitter.conventions import ParamsDict
+
+from .base import Callback
 
 
 class EarlyStopping(Callback):
@@ -465,7 +464,7 @@ class StochasticWeightAveraging(Callback):
         return (
             f"StochasticWeightAveraging(swa_scheduler={self.swa_scheduler}, "
             "start_epoch={self.start_epoch})"
-            )
+        )
 
     def on_fit_start(self, params_dict: dict) -> None:
         model = params_dict[ParamsDict.MODEL]

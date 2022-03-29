@@ -1,13 +1,18 @@
 """ Base callbacks class """
 import logging
+from typing import List
+
 from torchfitter.utils.convenience import get_logger
 
 __all__ = ["Callback", "CallbackHandler"]
 
 
 class Callback:
-    """
-    Base callbacks class.
+    """Base callbacks class.
+
+    A callbacks allows to interact with the model along various relevant points
+    during the training process. Each point is called hook, and each method of
+    a callbacks allows to "attach" functionality to that particular hook.
 
     Attributes
     ----------
@@ -22,9 +27,9 @@ class Callback:
     """
 
     def __init__(self):
-        self.log_name = "Callback"
-        self.logger = get_logger(name=self.log_name)
-        level = self.logger.level
+        self.log_name: str = "Callback"
+        self.logger: logging.Logger = get_logger(name=self.log_name)
+        level: int = self.logger.level
         logging.basicConfig(level=level)
 
     def set_log_level(self, log_level) -> None:
@@ -289,16 +294,16 @@ class CallbackHandler(Callback):
     """
 
     def __init__(self, callbacks_list):
-        self.handle_callbacks = True
+        self.handle_callbacks: bool = True
 
         if callbacks_list is None:
             self.handle_callbacks = False
         elif not isinstance(callbacks_list, list):
             raise TypeError("Callbacks must be a list of callbacks")
 
-        self.callbacks_list = callbacks_list
+        self.callbacks_list: List[Callback] = callbacks_list
 
-    def set_log_level(self, log_level) -> None:
+    def set_log_level(self, log_level: int) -> None:
         """
         Set the logging level for all callbacks contained in this instance of
         CallbacksHandler.

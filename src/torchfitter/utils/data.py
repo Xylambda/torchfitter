@@ -1,12 +1,13 @@
 """
 Pool of utilities to wrap data.
 """
-import torch
-import numpy as np
 from typing import Tuple, Union
-from torch.utils.data import Dataset
-from torchfitter.utils.preprocessing import numpy_to_torch
 
+import numpy as np
+import torch
+from torch.utils.data import Dataset
+
+from torchfitter.utils.preprocessing import numpy_to_torch
 
 __all__ = [
     "DataWrapper",

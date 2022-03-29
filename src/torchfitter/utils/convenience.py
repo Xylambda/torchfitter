@@ -1,8 +1,8 @@
 """ Pool of miscellaneous and convenient functions. """
 
-import torch
 import logging
 
+import torch
 
 __all__ = [
     "check_model_on_cuda",

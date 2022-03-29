@@ -1,6 +1,7 @@
 """ Base class for implementing regularization procedures, """
-import torch
 from typing import Generator
+
+import torch
 
 
 class RegularizerBase:

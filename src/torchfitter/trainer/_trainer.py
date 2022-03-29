@@ -1,16 +1,18 @@
-import time
-import torch
 import logging
 import statistics
-import torchmetrics
-from numpy import ndarray
-from accelerate import Accelerator
+import time
 from typing import List, Tuple, Union
-from torchfitter.conventions import ParamsDict
+
+import torch
+import torchmetrics
+from accelerate import Accelerator
+from numpy import ndarray
 from torch.utils.data.dataloader import DataLoader
+
+from torchfitter.callbacks.base import Callback, CallbackHandler
+from torchfitter.conventions import ParamsDict
 from torchfitter.regularization.base import RegularizerBase
-from torchfitter.callbacks.base import CallbackHandler, Callback
-from torchfitter.trainer._utils import TrainerInternalState, MetricsHandler
+from torchfitter.trainer._utils import MetricsHandler, TrainerInternalState
 
 
 class Trainer:

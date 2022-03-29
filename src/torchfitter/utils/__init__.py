@@ -1,8 +1,6 @@
 """ Utils functions. """
 
 
-from . import data
-from . import convenience
-from . import preprocessing
+from . import convenience, data, preprocessing
 
 __all__ = ["data", "convenience", "preprocessing"]

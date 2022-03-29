@@ -2,10 +2,10 @@
 Preprocessing functions.
 """
 import math
-import torch
-import numpy as np
-from sklearn.model_selection import train_test_split as __tr_test_split
 
+import numpy as np
+import torch
+from sklearn.model_selection import train_test_split as __tr_test_split
 
 __all__ = ["numpy_to_torch", "train_test_val_split"]
 

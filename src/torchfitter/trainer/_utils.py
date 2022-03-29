@@ -1,7 +1,9 @@
 """ Utilities for the training process. """
+from typing import Dict, List
+
 import torch
 import torchmetrics
-from typing import Dict, List
+
 from torchfitter.conventions import ParamsDict
 
 

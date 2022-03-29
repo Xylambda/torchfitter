@@ -1,9 +1,10 @@
 """ Module that contains Manager class. """
 import os
-import torch
 import random
-import numpy as np
 from typing import Callable, Iterable
+
+import numpy as np
+import torch
 
 
 class Manager:

@@ -1,7 +1,8 @@
 """ Util functions for testing purposes. """
+from typing import Iterable
+
 import torch
 import torch.nn as nn
-from typing import Iterable
 
 
 def change_model_params(
