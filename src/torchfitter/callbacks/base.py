@@ -12,7 +12,8 @@ class Callback:
     Attributes
     ----------
     logger : logging.Logger
-        Callback logger. You can set the logging level with the 'set_log_level'.
+        Callback logger. You can set the logging level with the
+        'set_log_level'.
 
     References
     ----------

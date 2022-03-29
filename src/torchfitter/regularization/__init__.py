@@ -9,7 +9,7 @@ from ._regularization_procedures import (
 
 # relative subpackages import
 from . import base
-from . import _regularization_procedures
+from . import _regularization_procedures  # noqa
 
 __all__ = [
     "L1Regularization",

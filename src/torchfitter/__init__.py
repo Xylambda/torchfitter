@@ -10,6 +10,16 @@ from . import callbacks
 from . import conventions
 from . import regularization
 
+__all__ = [
+    "io",
+    "utils",
+    "trainer",
+    "testing",
+    "manager",
+    "callbacks",
+    "conventions",
+    "regularization",
+]
 
 from ._version import get_versions
 

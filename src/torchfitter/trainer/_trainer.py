@@ -240,7 +240,7 @@ class Trainer:
         self,
         X: Union[torch.Tensor, ndarray],
         as_array=False,
-        dtype: str = "float"
+        dtype: str = "float",
     ) -> Union[torch.Tensor, ndarray]:
         """
         Predict function.
@@ -252,7 +252,7 @@ class Trainer:
         as_array : bool, optional, default: False
             Whether to output the predictions as a numpy.narray or not.
         dtype : str, optional, default: "float"
-            Data type to cast input tensor to. 
+            Data type to cast input tensor to.
 
         Returns
         -------

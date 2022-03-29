@@ -38,7 +38,10 @@ class EarlyStopping(Callback):
         self.log_name = "EarlyStopping"
 
     def __repr__(self) -> str:
-        return f"EarlyStopping(patience={self.patience}, load_best={self.load_best})"
+        return (
+            f"EarlyStopping(patience={self.patience},"
+            f"load_best={self.load_best})"
+        )
 
     def on_fit_start(self, params_dict):
         self.wait = 0
@@ -164,7 +167,13 @@ class LearningRateScheduler(Callback):
     >>> from torch.optim.lr_scheduler import ReduceLROnPlateau
     >>> from torchfitter.callbacks import LearningRateScheduler
     >>> sch = ReduceLROnPlateau(optimizer, factor=0.1, patience=50)
-    >>> lr_sch = LearningRateScheduler(scheduler=sch, metric='MeanSquaredError', on_train=False)
+
+    The default metric is the loss. You can choose the validation or the
+    training loss or you can pass another metric by doing:
+
+    >>> lr_sch = LearningRateScheduler(
+    ...     scheduler=sch, metric='MeanSquaredError', on_train=False
+    ... )
     >>> metrics = [torchmetrics.MeanSquaredError]
     >>> trainer = Trainer(callbacks=[lr_sch], metrics=metrics, **kwargs)
 
@@ -195,8 +204,12 @@ class LearningRateScheduler(Callback):
         if self.metric is not None:
             key = "train" if self.on_train else "validation"
             epoch_hist = params_dict[ParamsDict.EPOCH_HISTORY]
-            metric = epoch_hist[self.metric][key][-1]
-            self.scheduler.step(metric)
+            epoch_number = params_dict[ParamsDict.EPOCH_NUMBER]
+
+            # avoid failing in first epoch when on_train=False
+            if epoch_number > 1:
+                metric = epoch_hist[self.metric][key][-1]
+                self.scheduler.step(metric)
         else:
             self.scheduler.step()
 
@@ -416,13 +429,17 @@ class StochasticWeightAveraging(Callback):
     >>> optimizer, model, criterion = ...
     >>> swa_model = torch.optim.swa_utils.AveragedModel(model)
     >>> swa_start = 160
-    >>> scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=300)
+    >>> scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+    ...    optimizer, T_max=300
+    ... )
     >>> swa_scheduler = SWALR(optimizer, swa_lr=0.05)
-    >>> swa_callback = StochasticWeightAveraging(swa_scheduler, swa_start, scheduler=scheduler)
+    >>> swa_callback = StochasticWeightAveraging(
+    ...     swa_scheduler, swa_start, scheduler=scheduler
+    ... )
     >>> trainer = Trainer(callbacks=[swa_callback], **kwargs)
     >>> history = trainer.fit(...)
 
-    Now we can the SWA model by simply calling:
+    Now we can get the SWA model by simply calling:
     >>> swa_model = swa_callback.get_swa_model()
     """
 
@@ -445,7 +462,10 @@ class StochasticWeightAveraging(Callback):
         self.__swa_model = None
 
     def __repr__(self) -> str:
-        return f"StochasticWeightAveraging(swa_scheduler={self.swa_scheduler}, start_epoch={self.start_epoch})"
+        return (
+            f"StochasticWeightAveraging(swa_scheduler={self.swa_scheduler}, "
+            "start_epoch={self.start_epoch})"
+            )
 
     def on_fit_start(self, params_dict: dict) -> None:
         model = params_dict[ParamsDict.MODEL]
