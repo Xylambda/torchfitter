@@ -1,5 +1,6 @@
 """ Base callbacks class """
 import logging
+from abc import ABC
 from typing import List
 
 from torchfitter.utils.convenience import get_logger
@@ -7,7 +8,7 @@ from torchfitter.utils.convenience import get_logger
 __all__ = ["Callback", "CallbackHandler"]
 
 
-class Callback:
+class Callback(ABC):
     """Base callbacks class.
 
     A callbacks allows to interact with the model along various relevant points

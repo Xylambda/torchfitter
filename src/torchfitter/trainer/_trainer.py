@@ -200,6 +200,8 @@ class Trainer:
                 value=self.optimizer.param_groups[0]["lr"], is_batch=False
             )
 
+            # synchronize before measuring time
+            torch.cuda.synchronize()  # DISCT: self.accelerator.wait_for_everyone() ?
             epoch_time = time.perf_counter() - epoch_start_time
             self.internal_state.update_params(
                 **{
@@ -260,13 +262,17 @@ class Trainer:
         -------
         predictions : torch.Tensor or numpy.ndarray
             Predicted values.
+
+        See Also
+        --------
+        torchfitter.trainer.predict_tensor
         """
         if isinstance(X, ndarray):
             _tensor = torch.from_numpy(X)
             tensor = getattr(_tensor, dtype)()
 
         self.callback_handler.on_predict_begin(self.state_dict())
-        predictions = self._predict_tensor(tensor)
+        predictions = self.predict_tensor(tensor)
         self.callback_handler.on_predict_end(self.state_dict())
 
         if as_array:
@@ -274,15 +280,31 @@ class Trainer:
         else:
             return predictions
 
-    def _predict_tensor(self, tensor: torch.Tensor) -> torch.Tensor:
-        """
-        Make prediction for a given tensor.
+    def predict_tensor(self, tensor: torch.Tensor) -> torch.Tensor:
+        """Make prediction for a given torch tensor.
+
+        The passed tensor will be moved to the device the accelerator chose at
+        the beginning of the training process.
+
+        Parameters
+        ----------
+        tensor : torch.Tensor
+            Tensor to use to make inference.
+
+        Returns
+        -------
+        torch.Tensor
+            Predicted values.
+
+        See Also
+        --------
+        torchfitter.trainer.predict
         """
         device = self.accelerator.device
         tensor = tensor.to(device)
         return self.model(tensor)
 
-    def _prepare_gradient_clipping(self):
+    def _prepare_gradient_clipping(self) -> callable:
         """
         Identify the gradient clipping algorithm to use.
 
@@ -324,14 +346,12 @@ class Trainer:
         """
         self.accelerator.scaler = scaler
 
-    def reset_parameters(self, reset_model=False) -> None:
+    def reset_parameters(self, reset_model: bool = False) -> None:
         """
         Reset the internal dictionary that keeps track of the parameters state.
 
         Parameters
         ----------
-        reset_callbacks : bool, optional, default: False
-            True to reset the callbacks states as well as the Callback Handler.
         reset_model : bool, optional, default: False
             True to reset the model state.
         """
@@ -592,7 +612,7 @@ class Trainer:
         self.callback_handler.on_loss_step_begin(self.state_dict())
         loss = self.criterion(real, target)
 
-        # TODO: update loss
+        # TODO: update loss in internal state
         self.callback_handler.on_loss_step_end(self.state_dict())
 
         # apply regularization if any
@@ -606,7 +626,7 @@ class Trainer:
 
     def save_model(self, path):
         """
-        Convenient method to save the model ensuring the model is unwrapped and
+        Convenient method to save the model ensuring it is unwrapped and
         all processes are done.
 
         Parameters
@@ -620,7 +640,7 @@ class Trainer:
 
     def load_model(self, path):
         """
-        Convenient method to load the model ensuring the model is unwrapped.
+        Convenient method to load the model ensuring it is unwrapped.
 
         Parameters
         ----------
@@ -638,7 +658,8 @@ class Trainer:
 
         Returns
         -------
-        dict
+        state : dict
             A dictionary containing the current state of the trainer.
         """
-        return self.internal_state.get_state_dict()
+        state = self.internal_state.get_state_dict()
+        return state

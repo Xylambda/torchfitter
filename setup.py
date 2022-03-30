@@ -22,7 +22,7 @@ setup(
     python_requires=">=3.7,",
     install_requires=[
         "rich",
-        "numpy",
+        "numpy>=1.20.0",
         "accelerate",
         "scikit-learn",
         "torchmetrics",

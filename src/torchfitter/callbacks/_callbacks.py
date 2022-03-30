@@ -313,6 +313,10 @@ class RichProgressBar(Callback):
 
         self.log_name = "Rich Bar"
 
+    def on_fit_start(self, params_dict):
+        dev = params_dict[ParamsDict.DEVICE]
+        self.logger.info(f"Starting training process on {dev}\n")
+
     def on_train_batch_end(self, params_dict: dict) -> None:
         epoch = params_dict[ParamsDict.EPOCH_NUMBER]
         if epoch % self.display_step == 0 or epoch == 1:
@@ -357,8 +361,15 @@ class RichProgressBar(Callback):
         if epoch % self.display_step == 0 or epoch == 1:
             # update metrics
             text = self.render_text(params_dict[ParamsDict.EPOCH_HISTORY])
-            self.logger.info(text)
+            self.logger.info(text)  # DISC: use included Rich logger?
             self.progress_bar.stop()
+
+    def on_fit_end(self, params_dict):
+        total_time = params_dict[ParamsDict.TOTAL_TIME]
+        # final message
+        self.logger.info(
+            f"""\nEnd of training. Total time: {total_time:0.5f} seconds"""
+        )
 
     def render_text(self, update_dict):
         text_format = ""
@@ -370,7 +381,7 @@ class RichProgressBar(Callback):
 
                 if text_format:  # not empty
                     text_format = (
-                        f"{text_format} • {metric} > Train: "
+                        f"{text_format} • {metric} -> Train: "
                         f"{train_metric:.{self.prec}e} | "
                         f"Validation: {val_metric:.{self.prec}e}"
                     )
