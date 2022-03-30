@@ -201,7 +201,7 @@ class Trainer:
             )
 
             # synchronize before measuring time
-            torch.cuda.synchronize()  # DISCT: self.accelerator.wait_for_everyone() ?
+            self.accelerator.wait_for_everyone()
             epoch_time = time.perf_counter() - epoch_start_time
             self.internal_state.update_params(
                 **{
