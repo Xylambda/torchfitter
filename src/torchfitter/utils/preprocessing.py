@@ -136,7 +136,9 @@ def tabular_to_sliding_dataset(
     validation_idx: int,
     test_idx: int,
     n_past: int,
-    n_future: int
+    n_future: int,
+    make_writable: bool = True,
+
 ) -> List[np.ndarray]:
     """Convert a tabular or 2D dataset to a sliding window dataset (3D).
 
@@ -146,14 +148,19 @@ def tabular_to_sliding_dataset(
     Parameters
     ----------
     dataset : array-like
+        Array-like object.
     validation_idx : int
+        Index to create the validation set.
     test_idx : int
+        Index to create the testing set.
     n_past : int
         Number of past steps to make predictions. It will be used to
         generate the features.
     n_future : int
         Number of future steps to predict. It will be used to generate
         the labels.
+    make_writable : bool, optional, default: True
+        Make the resulting arrays writable by creating a copy of the view.
 
     Returns
     -------
@@ -170,10 +177,15 @@ def tabular_to_sliding_dataset(
     -------
     This function is very memory-consuming.
 
+    See Also
+    --------
+    torchfitter.utils.preprocessing.train_test_val_split
+
     TODO
     ----
     * Allow spliting by percentage.
     * Allow single-feature forecasting instead of multi-forecasting.
+    * Use `train_test_val_split` to abstract the splitting.
     """
     def get_train_and_test(array, n_past, n_future):
         """
@@ -205,7 +217,14 @@ def tabular_to_sliding_dataset(
         X, y = get_train_and_test(
             array=chunk, n_past=n_past, n_future=n_future
         )
-        output.append((X, y))
+
+        # make a copy to generate a writable array
+        if make_writable:
+            _tup = (X.copy(), y.copy())
+        else:
+            _tup = (X, y)
+
+        output.append(_tup)
 
     # unpack and return
     output = [item for sublist in output for item in sublist]
