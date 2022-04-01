@@ -427,10 +427,12 @@ class Trainer:
         loss : torch.Tensor
             Train loss graph.
         """
-        features, labels = batch
+        # assume last tensor in batch are labels
+        batch_len = len(batch)
+        features, labels = batch[:batch_len-1], batch[-1]
 
         # forward propagation
-        out = self.model(features)
+        out = self.model(*features)
         loss = self.loss_step(out, labels) / self.accumulate_iter
 
         # backpropagation
@@ -554,9 +556,11 @@ class Trainer:
         loss : torch.Tensor
             Validation loss graph.
         """
-        features, labels = batch
+        # assume last tensor in batch are labels
+        batch_len = len(batch)
+        features, labels = batch[:batch_len-1], batch[-1]
 
-        out = self.model(features)
+        out = self.model(*features)
         loss = self.loss_step(out, labels)
 
         # compute metrics, needed for accumulated computation
