@@ -7,6 +7,7 @@ from typing import Union, Iterable, List
 import pandas as pd
 import numpy as np
 import torch
+from sklearn.base import TransformerMixin, BaseEstimator
 from sklearn.model_selection import train_test_split as __tr_test_split
 
 __all__ = [
@@ -138,6 +139,7 @@ def tabular_to_sliding_dataset(
     n_past: int,
     n_future: int,
     make_writable: bool = True,
+    scaler: Union[TransformerMixin, BaseEstimator] = None
 
 ) -> List[np.ndarray]:
     """Convert a tabular or 2D dataset to a sliding window dataset (3D).
@@ -161,6 +163,9 @@ def tabular_to_sliding_dataset(
         the labels.
     make_writable : bool, optional, default: True
         Make the resulting arrays writable by creating a copy of the view.
+    scaler : default, None
+        If not None, the data will be normalized with the passed scaler.
+        Assumes distribution does not vary over time.
 
     Returns
     -------
@@ -186,6 +191,7 @@ def tabular_to_sliding_dataset(
     * Allow spliting by percentage.
     * Allow single-feature forecasting instead of multi-forecasting.
     * Use `train_test_val_split` to abstract the splitting.
+    * Allow selecting the target column.
     """
     def get_train_and_test(array, n_past, n_future):
         """
@@ -210,6 +216,13 @@ def tabular_to_sliding_dataset(
     train = arr[:validation_idx]
     validation = arr[validation_idx:test_idx]
     test = arr[test_idx:]
+
+    if scaler is not None:
+        scaler.fit(train)
+
+        train = scaler.transform(train)
+        validation = scaler.transform(validation)
+        test = scaler.transform(test)
 
     # get a rolling view of each data chunk
     output = []

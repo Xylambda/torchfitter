@@ -255,32 +255,6 @@ class Callback(ABC):
         """
         pass
 
-    def on_predict_begin(self, params_dict: dict) -> None:
-        """Called at the start of the predict step.
-
-        Subclasses should override for any actions to run. The trainer ignores
-        any returned values from this function.
-
-        Parameters
-        ----------
-        params_dict : dict
-            Dictionary containing the parameters of the training process.
-        """
-        pass
-
-    def on_predict_end(self, params_dict: dict) -> None:
-        """Called at the end of the predict step.
-
-        Subclasses should override for any actions to run. The trainer ignores
-        any returned values from this function.
-
-        Parameters
-        ----------
-        params_dict : dict
-            Dictionary containing the parameters of the training process.
-        """
-        pass
-
 
 class CallbackHandler(Callback):
     """Trainer callback handler.
@@ -543,33 +517,3 @@ class CallbackHandler(Callback):
         if self.handle_callbacks:
             for callback in self.callbacks_list:
                 callback.on_loss_step_end(params_dict)
-
-    def on_predict_begin(self, params_dict: dict) -> None:
-        """Called at the start of the predict step.
-
-        Call this method for all given callbacks list. Any returned values will
-        be ignored by the trainer.
-
-        Parameters
-        ----------
-        params_dict : dict
-            Dictionary containing the parameters of the training process.
-        """
-        if self.handle_callbacks:
-            for callback in self.callbacks_list:
-                callback.on_predict_begin(params_dict)
-
-    def on_predict_end(self, params_dict: dict) -> None:
-        """Called at the end of the predict step.
-
-        Call this method for all given callbacks list. Any returned values will
-        be ignored by the trainer.
-
-        Parameters
-        ----------
-        params_dict : dict
-            Dictionary containing the parameters of the training process.
-        """
-        if self.handle_callbacks:
-            for callback in self.callbacks_list:
-                callback.on_predict_end(params_dict)

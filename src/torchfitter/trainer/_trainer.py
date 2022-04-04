@@ -242,7 +242,7 @@ class Trainer:
     @torch.no_grad()
     def predict(
         self,
-        X: Union[torch.Tensor, ndarray],
+        X: Union[DataLoader, torch.Tensor, ndarray],
         as_array=False,
         dtype: str = "float",
     ) -> Union[torch.Tensor, ndarray]:
@@ -267,20 +267,25 @@ class Trainer:
         --------
         torchfitter.trainer.predict_tensor
         """
-        if isinstance(X, ndarray):
-            _tensor = torch.from_numpy(X)
-            tensor = getattr(_tensor, dtype)()
+        if isinstance(X, DataLoader):
+            _tensor = self.__predict_loader(X)
+            predictions = getattr(_tensor, dtype)()
 
-        self.callback_handler.on_predict_begin(self.state_dict())
-        predictions = self.predict_tensor(tensor)
-        self.callback_handler.on_predict_end(self.state_dict())
+        elif isinstance(X, ndarray):
+            _numpy = torch.from_numpy(X)
+            X = getattr(_numpy, dtype)()
+            predictions = self.__predict_tensor(X)
+
+        elif isinstance(X, torch.Tensor):
+            _tensor = self.__predict_tensor(X)
+            predictions = getattr(_tensor, dtype)()
 
         if as_array:
             return predictions.cpu().numpy()
         else:
             return predictions
 
-    def predict_tensor(self, tensor: torch.Tensor) -> torch.Tensor:
+    def __predict_tensor(self, tensor: torch.Tensor) -> torch.Tensor:
         """Make prediction for a given torch tensor.
 
         The passed tensor will be moved to the device the accelerator chose at
@@ -303,6 +308,20 @@ class Trainer:
         device = self.accelerator.device
         tensor = tensor.to(device)
         return self.model(tensor)
+
+    def __predict_loader(self, loader: DataLoader) -> torch.Tensor:
+        """Make inference prediction for a given torch.DataLoader.
+
+        Useful when the tensor of features does not fit into memory.
+        """
+        _predictions = []
+        loader = self.accelerator.prepare_data_loader(loader)
+        for idx, (feat, lab) in enumerate(loader):
+            _pred = self.model(feat)
+            _predictions.append(_pred)
+
+        predictions = torch.cat(_predictions)
+        return predictions
 
     def _prepare_gradient_clipping(self) -> callable:
         """

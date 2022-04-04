@@ -387,14 +387,14 @@ class RichProgressBar(Callback):
                     )
                 else:
                     text_format = (
-                        f"{metric} > Train: "
+                        f"{metric} -> Train: "
                         f"{train_metric:.{self.prec}e} | Validation: "
                         f"{val_metric:.{self.prec}e}"
                     )
             else:
                 if self.log_lr:
                     text_format = (
-                        f"{text_format} • LearningRate: "
+                        f"{text_format} • Learning Rate: "
                         f"{update_dict[metric][-1]}"
                     )
 
