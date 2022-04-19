@@ -228,15 +228,7 @@ class Trainer:
         )
         self.callback_handler.on_fit_end(self.state_dict())
 
-        # construct history object to return
-        history = {
-            ParamsDict.EPOCH_HISTORY: self.internal_state.get_single_param(
-                key=ParamsDict.EPOCH_HISTORY
-            ),
-            ParamsDict.BATCH_HISTORY: self.internal_state.get_single_param(
-                key=ParamsDict.BATCH_HISTORY
-            ),
-        }
+        history = self.get_history()
         return history
 
     @torch.no_grad()
@@ -262,10 +254,6 @@ class Trainer:
         -------
         predictions : torch.Tensor or numpy.ndarray
             Predicted values.
-
-        See Also
-        --------
-        torchfitter.trainer.predict_tensor
         """
         if isinstance(X, DataLoader):
             _tensor = self.__predict_loader(X)
@@ -300,10 +288,6 @@ class Trainer:
         -------
         torch.Tensor
             Predicted values.
-
-        See Also
-        --------
-        torchfitter.trainer.predict
         """
         device = self.accelerator.device
         tensor = tensor.to(device)
@@ -448,7 +432,7 @@ class Trainer:
         """
         # assume last tensor in batch are labels
         batch_len = len(batch)
-        features, labels = batch[:batch_len-1], batch[-1]
+        features, labels = batch[: batch_len - 1], batch[-1]
 
         # forward propagation
         out = self.model(*features)
@@ -512,8 +496,11 @@ class Trainer:
     ) -> float:
         """Perform a validation step using the given dataloader.
 
-        A validation step consists of running and the model for each batch in
-        the given validation dataloader.
+        A validation step consists of running the model for each batch in the
+        given validation dataloader.
+
+        This method runs under the context of "torch.no_grad", which means
+        gradients won't be tracked.
 
         Parameters
         ----------
@@ -577,7 +564,7 @@ class Trainer:
         """
         # assume last tensor in batch are labels
         batch_len = len(batch)
-        features, labels = batch[:batch_len-1], batch[-1]
+        features, labels = batch[: batch_len - 1], batch[-1]
 
         out = self.model(*features)
         loss = self.loss_step(out, labels)
@@ -686,3 +673,23 @@ class Trainer:
         """
         state = self.internal_state.get_state_dict()
         return state
+
+    def get_history(self) -> dict:
+        """Return the training history.
+
+        The history will be created up to the last epoch.
+
+        Returns
+        -------
+        history : dict
+            Dictionary containing the history up to the last epoch.
+        """
+        history = {
+            ParamsDict.EPOCH_HISTORY: self.internal_state.get_single_param(
+                key=ParamsDict.EPOCH_HISTORY
+            ),
+            ParamsDict.BATCH_HISTORY: self.internal_state.get_single_param(
+                key=ParamsDict.BATCH_HISTORY
+            ),
+        }
+        return history

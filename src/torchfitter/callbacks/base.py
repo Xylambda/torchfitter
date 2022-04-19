@@ -15,6 +15,10 @@ class Callback(ABC):
     during the training process. Each point is called hook, and each method of
     a callbacks allows to "attach" functionality to that particular hook.
 
+    For example, if one were to run a method at the start of the fitting
+    process he or she would pass a callback with the desired functionality
+    filling the method "on_fit_start".
+
     Attributes
     ----------
     logger : logging.Logger

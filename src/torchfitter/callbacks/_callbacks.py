@@ -38,16 +38,16 @@ class EarlyStopping(Callback):
 
     def __repr__(self) -> str:
         return (
-            f"EarlyStopping(patience={self.patience},"
+            f"EarlyStopping(patience={self.patience}, "
             f"load_best={self.load_best})"
         )
 
-    def on_fit_start(self, params_dict):
+    def on_fit_start(self, params_dict: dict) -> None:
         self.wait = 0
         self.stopped_epoch = 0
         self.best = float("inf")
 
-    def on_epoch_end(self, params_dict):
+    def on_epoch_end(self, params_dict: dict) -> None:
         current_loss = params_dict[ParamsDict.VAL_LOSS]
         epoch_number = params_dict[ParamsDict.EPOCH_NUMBER]
         model = params_dict[ParamsDict.MODEL]
@@ -71,7 +71,7 @@ class EarlyStopping(Callback):
                     model.load_state_dict(best_params)
                     self.logger.info("Best observed parameters loaded.")
 
-    def on_fit_end(self, params_dict):
+    def on_fit_end(self, params_dict: None) -> None:
         if self.stopped_epoch > 0:
             self.logger.info(
                 f"Early stopping applied at epoch: {self.stopped_epoch}"
@@ -98,18 +98,24 @@ class LoggerCallback(Callback):
         Number of decimals in the numbers.
     """
 
-    def __init__(self, update_step, precision=2):
+    def __init__(self, update_step: int, precision: int = 2):
         super(LoggerCallback, self).__init__()
         self.update_step = update_step
         self.prec = precision
 
         self.log_name = "LoggerCallback"
 
-    def on_fit_start(self, params_dict):
+    def __repr__(self) -> str:
+        return (
+            f"LoggerCallback(update_step={self.update_step}, "
+            f"precision={self.prec})"
+        )
+
+    def on_fit_start(self, params_dict: dict) -> None:
         dev = params_dict[ParamsDict.DEVICE]
         self.logger.info(f"Starting training process on {dev}")
 
-    def on_epoch_end(self, params_dict) -> None:
+    def on_epoch_end(self, params_dict: dict) -> None:
         epoch_number = params_dict[ParamsDict.EPOCH_NUMBER]
         total_epochs = params_dict[ParamsDict.TOTAL_EPOCHS]
         val_loss = params_dict[ParamsDict.VAL_LOSS]
@@ -126,7 +132,7 @@ class LoggerCallback(Callback):
         if epoch_number % self.update_step == 0 or epoch_number == 1:
             self.logger.info(msg)
 
-    def on_fit_end(self, params_dict):
+    def on_fit_end(self, params_dict: dict) -> None:
         total_time = params_dict[ParamsDict.TOTAL_TIME]
         # final message
         self.logger.info(
@@ -197,7 +203,14 @@ class LearningRateScheduler(Callback):
 
     def __repr__(self) -> str:
         sch = type(self.scheduler).__name__
-        return f"LearningRateScheduler(scheduler={sch}, metric={self.metric})"
+        return (
+            f"LearningRateScheduler(scheduler={sch}, metric={self.metric}), "
+            f"on_train={self.on_train}"
+        )
+
+    def on_fit_start(self, params_dict: dict) -> None:
+        accelerator = params_dict[ParamsDict.ACCELERATOR]
+        self.scheduler = accelerator.prepare(self.scheduler)
 
     def on_train_step_end(self, params_dict: dict) -> None:
         if self.metric is not None:
@@ -255,7 +268,13 @@ class GPUStats(Callback):
 
         self.log_name = "GPU Stats"
 
-    def on_epoch_end(self, params_dict):
+    def __repr__(self) -> str:
+        return (
+            f"GPUStats(format={self.format}, queries={self.queries}, "
+            f"queries={self.queries})"
+        )
+
+    def on_epoch_end(self, params_dict: dict) -> None:
         epoch_number = params_dict[ParamsDict.EPOCH_NUMBER]
 
         if epoch_number == 1 or epoch_number % self.update_step == 0:
@@ -313,19 +332,31 @@ class RichProgressBar(Callback):
 
         self.log_name = "Rich Bar"
 
-    def on_fit_start(self, params_dict):
+    def __repr__(self) -> str:
+        return (
+            f"RichProgressBar(display_step={self.display_step}, "
+            f"log_lr={self.log_lr}, precision={self.precision})"
+        )
+
+    def on_fit_start(self, params_dict: dict) -> None:
         dev = params_dict[ParamsDict.DEVICE]
         self.logger.info(f"Starting training process on {dev}\n")
 
     def on_train_batch_end(self, params_dict: dict) -> None:
         epoch = params_dict[ParamsDict.EPOCH_NUMBER]
+        accelerator = params_dict[ParamsDict.ACCELERATOR]
+
         if epoch % self.display_step == 0 or epoch == 1:
+            accelerator.wait_for_everyone()
             self.progress_bar.advance(self.epoch_task, 1)
 
     def on_validation_batch_end(self, params_dict: dict) -> None:
         epoch = params_dict[ParamsDict.EPOCH_NUMBER]
+        accelerator = params_dict[ParamsDict.ACCELERATOR]
+
         if epoch % self.display_step == 0 or epoch == 1:
             # advance bar
+            accelerator.wait_for_everyone()
             self.progress_bar.advance(self.epoch_task, 1)
 
     def on_epoch_start(self, params_dict: dict) -> None:
@@ -474,11 +505,15 @@ class StochasticWeightAveraging(Callback):
     def __repr__(self) -> str:
         return (
             f"StochasticWeightAveraging(swa_scheduler={self.swa_scheduler}, "
-            "start_epoch={self.start_epoch})"
+            f"start_epoch={self.start_epoch})"
         )
 
     def on_fit_start(self, params_dict: dict) -> None:
         model = params_dict[ParamsDict.MODEL]
+        accelerator = params_dict[ParamsDict.ACCELERATOR]
+
+        self.scheduler = accelerator.prepare(self.scheduler)
+        self.swa_scheduler = accelerator.prepare(self.swa_scheduler)
         self.__swa_model = AveragedModel(model)
 
     def on_train_step_end(self, params_dict: dict) -> None:

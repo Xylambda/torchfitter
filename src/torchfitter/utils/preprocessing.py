@@ -10,7 +10,9 @@ from sklearn.base import TransformerMixin, BaseEstimator
 from sklearn.model_selection import train_test_split as __tr_test_split
 
 __all__ = [
-    "numpy_to_torch", "train_test_val_split", "tabular_to_sliding_dataset"
+    "numpy_to_torch",
+    "train_test_val_split",
+    "tabular_to_sliding_dataset",
 ]
 
 
@@ -138,7 +140,7 @@ def tabular_to_sliding_dataset(
     n_past: int,
     n_future: int,
     make_writable: bool = True,
-    scaler: Union[TransformerMixin, BaseEstimator] = None
+    scaler: Union[TransformerMixin, BaseEstimator] = None,
 ) -> List[np.ndarray]:
     """Convert a tabular or 2D dataset to a sliding window dataset (3D).
 
@@ -191,6 +193,7 @@ def tabular_to_sliding_dataset(
     * Use `train_test_val_split` to abstract the splitting.
     * Allow selecting the target column.
     """
+
     def get_train_and_test(array, n_past, n_future):
         """
         Convenient sub-function that wraps to functionality to
