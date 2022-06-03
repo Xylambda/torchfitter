@@ -11,6 +11,10 @@ class ParamsDict:
         The current training loss.
     VAL_LOSS : str
         The current validation loss.
+    BATCH_TRAIN_LOSS : str
+        Current batch train loss.
+    BATCH_VAL_LOSS : str
+        Current batch validation loss.
     OPTIMIZER : str
         Algorithm used to optimize the model.
     EPOCH_TIME : str
@@ -62,6 +66,8 @@ class ParamsDict:
 
     TRAIN_LOSS = "training_loss"
     VAL_LOSS = "validation_loss"
+    BATCH_TRAIN_LOSS = "batch_training_loss"
+    BATCH_VAL_LOSS = "batch_validation_loss"
     OPTIMIZER = "optimizer"
     EPOCH_TIME = "epoch_time"
     EPOCH_NUMBER = "epoch_number"

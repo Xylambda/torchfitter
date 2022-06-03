@@ -436,7 +436,7 @@ class Trainer:
 
         # forward propagation
         out = self.model(*features)
-        loss = self.loss_step(out, labels) / self.accumulate_iter
+        loss = self.loss_step(out, labels, is_validation=False) / self.accumulate_iter
 
         # backpropagation
         self.accelerator.backward(loss)
@@ -567,7 +567,7 @@ class Trainer:
         features, labels = batch[: batch_len - 1], batch[-1]
 
         out = self.model(*features)
-        loss = self.loss_step(out, labels)
+        loss = self.loss_step(out, labels, is_validation=True)
 
         # compute metrics, needed for accumulated computation
         metrics_single = self.metrics_handler.single_batch_computation(
@@ -600,7 +600,7 @@ class Trainer:
         return loss
 
     def loss_step(
-        self, real: torch.Tensor, target: torch.Tensor
+        self, real: torch.Tensor, target: torch.Tensor, is_validation : bool
     ) -> torch.Tensor:
         """Compute loss graph.
 
@@ -622,7 +622,13 @@ class Trainer:
         self.callback_handler.on_loss_step_begin(self.state_dict())
         loss = self.criterion(real, target)
 
-        # TODO: update loss in internal state
+        # update internal state with loss
+        if is_validation:
+            key = ParamsDict.BATCH_VAL_LOSS
+        else:
+            key = ParamsDict.BATCH_TRAIN_LOSS
+        self.internal_state.update_params(**{key: loss})
+
         self.callback_handler.on_loss_step_end(self.state_dict())
 
         # apply regularization if any

@@ -63,6 +63,8 @@ class TrainerInternalState:
         """
         self.__dict__[ParamsDict.TRAIN_LOSS] = float("inf")
         self.__dict__[ParamsDict.VAL_LOSS] = float("inf")
+        self.__dict__[ParamsDict.BATCH_TRAIN_LOSS] = float("inf")
+        self.__dict__[ParamsDict.BATCH_VAL_LOSS] = float("inf")
         self.__dict__[ParamsDict.EPOCH_TIME] = 0
         self.__dict__[ParamsDict.EPOCH_NUMBER] = 1
         self.__dict__[ParamsDict.TOTAL_EPOCHS] = None
