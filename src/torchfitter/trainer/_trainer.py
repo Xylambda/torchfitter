@@ -627,7 +627,7 @@ class Trainer:
             key = ParamsDict.BATCH_VAL_LOSS
         else:
             key = ParamsDict.BATCH_TRAIN_LOSS
-        self.internal_state.update_params(**{key: loss})
+        self.internal_state.update_params(**{key: loss.item()})
 
         self.callback_handler.on_loss_step_end(self.state_dict())
 
