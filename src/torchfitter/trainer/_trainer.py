@@ -436,7 +436,10 @@ class Trainer:
 
         # forward propagation
         out = self.model(*features)
-        loss = self.loss_step(out, labels, is_validation=False) / self.accumulate_iter
+        loss = (
+            self.loss_step(out, labels, is_validation=False)
+            / self.accumulate_iter
+        )
 
         # backpropagation
         self.accelerator.backward(loss)
@@ -600,7 +603,7 @@ class Trainer:
         return loss
 
     def loss_step(
-        self, real: torch.Tensor, target: torch.Tensor, is_validation : bool
+        self, real: torch.Tensor, target: torch.Tensor, is_validation: bool
     ) -> torch.Tensor:
         """Compute loss graph.
 

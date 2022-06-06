@@ -2,11 +2,11 @@
 Preprocessing functions.
 """
 import math
+from typing import Iterable, List, Union
 
-from typing import Union, Iterable, List
 import numpy as np
 import torch
-from sklearn.base import TransformerMixin, BaseEstimator
+from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.model_selection import train_test_split as __tr_test_split
 
 __all__ = [
