@@ -23,7 +23,7 @@ setup(
     install_requires=[
         "rich",
         "numpy>=1.20.0",
-        "accelerate",
+        "accelerate>=0.11.0",
         "scikit-learn",
         "torchmetrics",
         "torch>=1.1.0",

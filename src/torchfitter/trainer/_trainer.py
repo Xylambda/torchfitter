@@ -11,7 +11,6 @@ from torch.utils.data.dataloader import DataLoader
 
 from torchfitter.callbacks.base import Callback, CallbackHandler
 from torchfitter.conventions import ParamsDict
-from torchfitter.regularization.base import RegularizerBase
 from torchfitter.trainer._utils import MetricsHandler, TrainerInternalState
 
 
@@ -35,8 +34,6 @@ class Trainer:
         Loss function criterion used to optimize the model.
     optimizer : torch.optim
         Optimizer to perform the parameters update.
-    regularizer : torchfitter.regularizer, optional, default: None
-        Procedure to apply penalties to the loss function.
     mixed_precision : bool, optional, default: False
         Whether to use mixed precision training or not. If True, the forward
         pass will be computed under the context of `torch.cuda.amp.autocast`
@@ -54,7 +51,8 @@ class Trainer:
         trainer will create an instance with the default parameters.
     accumulate_iter : int, optional, default: 1
         Accumulate gradients every 'accumulate_iter' iterations. The default
-        value does not accumulate the gradients.
+        value does not accumulate the gradients. If an instance of Accelerator
+        is passed to the trainer, this parameter will be ignored.
     gradient_clipping : {None, 'norm', 'value'}
         Norm gradient clipping of value gradient clipping. If None, gradient
         clipping won't be applied.
@@ -84,7 +82,6 @@ class Trainer:
         model: torch.nn.Module,
         criterion: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
-        regularizer: RegularizerBase = None,
         mixed_precision: bool = False,
         callbacks: List[Callback] = None,
         metrics: List[torchmetrics.Metric] = None,
@@ -95,7 +92,6 @@ class Trainer:
         log_level: int = logging.INFO,
     ):
         self.criterion = criterion
-        self.regularizer = regularizer
         self.callbacks_list = callbacks
         self.metrics_list = metrics
         self.accumulate_iter = accumulate_iter
@@ -104,7 +100,10 @@ class Trainer:
         self.log_level = log_level
 
         if accelerator is None:
-            self.accelerator = Accelerator(fp16=mixed_precision)
+            self.accelerator = Accelerator(
+                fp16=mixed_precision,
+                gradient_accumulation_steps=accumulate_iter,
+            )
 
         # wrap withing accelerate environment
         self.optimizer = self.accelerator.prepare_optimizer(optimizer)
@@ -118,7 +117,9 @@ class Trainer:
             callbacks_list=self.callbacks_list
         )
         self.metrics_handler = MetricsHandler(
-            metrics_list=self.metrics_list, criterion=criterion
+            metrics_list=self.metrics_list,
+            criterion=criterion,
+            device=self.internal_state.get_single_param(ParamsDict.DEVICE),
         )
         self.gradient_clipping_algo_ = self._prepare_gradient_clipping()
 
@@ -430,33 +431,24 @@ class Trainer:
         loss : torch.Tensor
             Train loss graph.
         """
-        # assume last tensor in batch are labels
-        batch_len = len(batch)
-        features, labels = batch[: batch_len - 1], batch[-1]
+        with self.accelerator.accumulate(self.model):
+            # assume last tensor in batch are labels
+            batch_len = len(batch)
+            features, labels = batch[: batch_len - 1], batch[-1]
 
-        # forward propagation
-        out = self.model(*features)
-        loss = self.loss_step(out, labels, is_validation=False) / self.accumulate_iter
+            # forward propagation
+            out = self.model(*features)
+            loss = self.loss_step(out, labels, is_validation=False)
 
-        # backpropagation
-        self.accelerator.backward(loss)
+            # backpropagation
+            self.accelerator.backward(loss)
 
-        # gradient clipping
-        if self.gradient_clipping_algo_ is not None:
-            self.gradient_clipping_algo_(
-                self.model.parameters(), **self.gradient_clipping_kwargs
-            )
+            # gradient clipping
+            if self.gradient_clipping_algo_ is not None:
+                self.gradient_clipping_algo_(
+                    self.model.parameters(), **self.gradient_clipping_kwargs
+                )
 
-        # gradient accumulation logic
-        batch_idx_plus = batch_index + 1
-        loader_len = self.internal_state.get_single_param(
-            key=ParamsDict.TRAIN_LOADER
-        )
-        if (
-            batch_idx_plus % self.accumulate_iter == 0
-            or batch_idx_plus == loader_len
-        ):
-            # update parameters and remove gradient
             self.optimizer.step()
             self.optimizer.zero_grad()
 
@@ -600,7 +592,7 @@ class Trainer:
         return loss
 
     def loss_step(
-        self, real: torch.Tensor, target: torch.Tensor, is_validation : bool
+        self, real: torch.Tensor, target: torch.Tensor, is_validation: bool
     ) -> torch.Tensor:
         """Compute loss graph.
 
@@ -620,23 +612,21 @@ class Trainer:
             Loss graph contained in a (1 x 1) torch.Tensor.
         """
         self.callback_handler.on_loss_step_begin(self.state_dict())
-        loss = self.criterion(real, target)
+        with self.accelerator.autocast():
+            loss = self.criterion(real, target)
 
-        # update internal state with loss
+        # select key to update
         if is_validation:
             key = ParamsDict.BATCH_VAL_LOSS
         else:
             key = ParamsDict.BATCH_TRAIN_LOSS
-        self.internal_state.update_params(**{key: loss.item()})
 
+        # store loss graph
+        self.internal_state.update_params(**{key: loss})
+
+        # callback and retrieval in case loss was modified
         self.callback_handler.on_loss_step_end(self.state_dict())
-
-        # apply regularization if any
-        if self.regularizer is not None:
-            penalty = self.regularizer(
-                self.model.named_parameters(), self.accelerator.device
-            )
-            loss += penalty.item()
+        loss = self.internal_state.get_single_param(key)
 
         return loss
 

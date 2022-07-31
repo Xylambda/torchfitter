@@ -300,10 +300,12 @@ class MetricsHandler:
         self,
         metrics_list: List[torchmetrics.Metric],
         criterion: torch.nn.Module,
+        device,
     ) -> None:
 
         self.metrics_list = metrics_list
         self.criterion = criterion
+        self.device = device
 
         # handle metrics if there are metrics
         self.__handle_metrics = False if self.metrics_list is None else True
@@ -312,6 +314,10 @@ class MetricsHandler:
             self.metric_names = [
                 type(metric).__name__ for metric in self.metrics_list
             ]
+
+            # move metrics to device
+            metrics = [metric.to(self.device) for metric in self.metrics_list]
+            self.metrics_list = metrics
         else:
             self.metric_names = None
 

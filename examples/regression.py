@@ -14,11 +14,11 @@ from torch.optim.swa_utils import SWALR
 from torchfitter.utils.data import DataWrapper
 from torchfitter.conventions import ParamsDict
 from sklearn.model_selection import train_test_split
-from torchfitter.regularization import L1Regularization
 from torchfitter.callbacks import (
     EarlyStopping,
     RichProgressBar,
     StochasticWeightAveraging,
+    L1Regularization
 )
 
 # -----------------------------------------------------------------------------
@@ -50,7 +50,6 @@ def main():
     # -------------------------------------------------------------------------
     model = nn.Linear(in_features=1, out_features=1)
 
-    regularizer = L1Regularization(regularization_rate=0.01, biases=False)
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=0.005)
 
@@ -65,6 +64,7 @@ def main():
         EarlyStopping(patience=100, load_best=True),
         swa_callback,
         RichProgressBar(display_step=100, log_lr=False),
+        L1Regularization(regularization_rate=0.01, biases=False)
     ]
 
     metrics = [
@@ -87,7 +87,6 @@ def main():
         model=model,
         criterion=criterion,
         optimizer=optimizer,
-        regularizer=regularizer,
         callbacks=callbacks,
         metrics=metrics,
     )

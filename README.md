@@ -154,9 +154,9 @@ class L1Regularization(RegularizerBase):
 
         for name, param in named_parameters:
             if not self.biases and name.endswith("bias"):
-                pass
-            else:
-                penalty_term = penalty_term + param.norm(p=1)
+                continue
+            
+            penalty_term = penalty_term + param.norm(p=1)
 
         return self.rate * penalty_term
 ```

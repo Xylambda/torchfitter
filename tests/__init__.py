@@ -5,4 +5,3 @@ from . import test_trainer
 from . import test_testing
 from . import test_manager
 from . import test_callbacks
-from . import test_regularization

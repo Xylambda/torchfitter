@@ -14,7 +14,7 @@ import torch.optim as optim
 import matplotlib.pyplot as plt
 from torchfitter.conventions import ParamsDict
 from sklearn.datasets import make_regression
-from torchfitter.utils.preprocessing import train_test_val_split
+from torchfitter.utils.preprocessing import train_test_val_split, torch_to_numpy
 from torchfitter.trainer import Trainer
 from torch.utils.data import DataLoader
 from torchfitter.utils.data import DataWrapper
@@ -145,12 +145,8 @@ def main():
     y_pred_std = distr_prediction.stddev
 
     # to array
-    try:
-        y_pred = y_pred.cpu().detach().numpy().flatten()
-        y_pred_std = y_pred_std.cpu().detach().numpy().flatten()
-    except:
-        y_pred = y_pred.detach().numpy().flatten()
-        y_pred_std = y_pred_std.detach().numpy().flatten()
+    y_pred = torch_to_numpy(y_pred)
+    y_pred_std = torch_to_numpy(y_pred_std)
 
     # -------------------------------------------------------------------------
     # plot losses, mean predictions and lr

@@ -104,3 +104,13 @@ def test_fast_tensor_dataloader_case2(loader_config):
 
         torch.testing.assert_allclose(obt_a, expected_dict[key_a])
         torch.testing.assert_allclose(obt_b, expected_dict[key_b])
+
+
+@pytest.mark.xfail(reason="Not implemented")
+def test_freeze_model():
+    pass
+
+
+@pytest.mark.xfail(reason="Not implemented")
+def test_unfreeze_model():
+    pass

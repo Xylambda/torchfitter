@@ -8,6 +8,9 @@ from ._callbacks import (
     LoggerCallback,
     RichProgressBar,
     StochasticWeightAveraging,
+    L1Regularization,
+    L2Regularization,
+    ElasticNetRegularization,
 )
 
 __all__ = [
@@ -18,4 +21,7 @@ __all__ = [
     "RichProgressBar",
     "LearningRateScheduler",
     "StochasticWeightAveraging",
+    "L1Regularization",
+    "L2Regularization",
+    "ElasticNetRegularization",
 ]

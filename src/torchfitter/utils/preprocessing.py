@@ -12,8 +12,33 @@ from sklearn.model_selection import train_test_split as __tr_test_split
 __all__ = [
     "numpy_to_torch",
     "train_test_val_split",
+    "torch_to_numpy",
     "tabular_to_sliding_dataset",
 ]
+
+
+def torch_to_numpy(tensor: torch.Tensor) -> np.ndarray:
+    """
+    Cast a torch.Tensor to a numpy.ndarray dealing with device management if
+    any. For example, a tensor may need to be detached but it is not stored on
+    the cpu.
+
+    Parameters
+    ----------
+    tensor : torch.Tensor
+        Tensor to convert to numpy.
+
+    Returns
+    -------
+    array : numpy.array
+        NumPy array.
+    """
+    try:
+        array = tensor.detach().numpy()
+    except Exception:
+        array = tensor.cpu().detach().numpy()
+
+    return array
 
 
 def numpy_to_torch(array: np.ndarray, dtype: str) -> torch.Tensor:

@@ -6,7 +6,6 @@ from . import (
     conventions,
     io,
     manager,
-    regularization,
     testing,
     trainer,
     utils,
@@ -20,7 +19,6 @@ __all__ = [
     "manager",
     "callbacks",
     "conventions",
-    "regularization",
 ]
 
 from ._version import get_versions
