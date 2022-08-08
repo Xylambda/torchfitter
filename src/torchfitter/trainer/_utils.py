@@ -1,7 +1,9 @@
 """ Utilities for the training process. """
+from typing import Dict, List
+
 import torch
 import torchmetrics
-from typing import Dict, List
+
 from torchfitter.conventions import ParamsDict
 
 
@@ -61,6 +63,8 @@ class TrainerInternalState:
         """
         self.__dict__[ParamsDict.TRAIN_LOSS] = float("inf")
         self.__dict__[ParamsDict.VAL_LOSS] = float("inf")
+        self.__dict__[ParamsDict.BATCH_TRAIN_LOSS] = float("inf")
+        self.__dict__[ParamsDict.BATCH_VAL_LOSS] = float("inf")
         self.__dict__[ParamsDict.EPOCH_TIME] = 0
         self.__dict__[ParamsDict.EPOCH_NUMBER] = 1
         self.__dict__[ParamsDict.TOTAL_EPOCHS] = None
@@ -296,10 +300,12 @@ class MetricsHandler:
         self,
         metrics_list: List[torchmetrics.Metric],
         criterion: torch.nn.Module,
+        device,
     ) -> None:
 
         self.metrics_list = metrics_list
         self.criterion = criterion
+        self.device = device
 
         # handle metrics if there are metrics
         self.__handle_metrics = False if self.metrics_list is None else True
@@ -308,6 +314,10 @@ class MetricsHandler:
             self.metric_names = [
                 type(metric).__name__ for metric in self.metrics_list
             ]
+
+            # move metrics to device
+            metrics = [metric.to(self.device) for metric in self.metrics_list]
+            self.metrics_list = metrics
         else:
             self.metric_names = None
 

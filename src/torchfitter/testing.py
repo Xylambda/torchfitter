@@ -1,7 +1,8 @@
 """ Util functions for testing purposes. """
+from typing import Iterable
+
 import torch
 import torch.nn as nn
-from typing import Iterable
 
 
 def change_model_params(
@@ -81,7 +82,7 @@ def compute_forward_gradient(module: torch.nn.Module, *tensors) -> dict:
 
 
 def check_monotonically_decreasing(
-    iterable: Iterable, strict: bool = False
+    iterable: Iterable[float], strict: bool = False
 ) -> bool:
     """Check if the given iterable is monotonically decreasing.
 

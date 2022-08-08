@@ -2,10 +2,26 @@
 
 from . import base
 from ._callbacks import (
-    GPUStats,
     EarlyStopping,
+    GPUStats,
+    LearningRateScheduler,
     LoggerCallback,
     RichProgressBar,
-    LearningRateScheduler,
-    StochasticWeightAveraging
+    StochasticWeightAveraging,
+    L1Regularization,
+    L2Regularization,
+    ElasticNetRegularization,
 )
+
+__all__ = [
+    "base",
+    "GPUStats",
+    "EarlyStopping",
+    "LoggerCallback",
+    "RichProgressBar",
+    "LearningRateScheduler",
+    "StochasticWeightAveraging",
+    "L1Regularization",
+    "L2Regularization",
+    "ElasticNetRegularization",
+]

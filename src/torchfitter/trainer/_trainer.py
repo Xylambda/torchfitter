@@ -1,14 +1,17 @@
-import time
-import torch
 import logging
 import statistics
+import time
+from typing import List, Tuple, Union
+
+import torch
 import torchmetrics
-from typing import List, Tuple
 from accelerate import Accelerator
+from numpy import ndarray
+from torch.utils.data.dataloader import DataLoader
+
+from torchfitter.callbacks.base import Callback, CallbackHandler
 from torchfitter.conventions import ParamsDict
-from torchfitter.regularization.base import RegularizerBase
-from torchfitter.callbacks.base import CallbackHandler, Callback
-from torchfitter.trainer._utils import TrainerInternalState, MetricsHandler
+from torchfitter.trainer._utils import MetricsHandler, TrainerInternalState
 
 
 class Trainer:
@@ -31,8 +34,6 @@ class Trainer:
         Loss function criterion used to optimize the model.
     optimizer : torch.optim
         Optimizer to perform the parameters update.
-    regularizer : torchfitter.regularizer, optional, default: None
-        Procedure to apply penalties to the loss function.
     mixed_precision : bool, optional, default: False
         Whether to use mixed precision training or not. If True, the forward
         pass will be computed under the context of `torch.cuda.amp.autocast`
@@ -46,11 +47,12 @@ class Trainer:
         example, passing `[MeanSquaredError()]` will be registered as
         `MeanSquaredError`.
     accelerator : accelerate.Accelerator
-        Accelerator object from 'accelerate'. If no object is passed, the 
+        Accelerator object from 'accelerate'. If no object is passed, the
         trainer will create an instance with the default parameters.
     accumulate_iter : int, optional, default: 1
         Accumulate gradients every 'accumulate_iter' iterations. The default
-        value does not accumulate the gradients.
+        value does not accumulate the gradients. If an instance of Accelerator
+        is passed to the trainer, this parameter will be ignored.
     gradient_clipping : {None, 'norm', 'value'}
         Norm gradient clipping of value gradient clipping. If None, gradient
         clipping won't be applied.
@@ -80,7 +82,6 @@ class Trainer:
         model: torch.nn.Module,
         criterion: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
-        regularizer: RegularizerBase = None,
         mixed_precision: bool = False,
         callbacks: List[Callback] = None,
         metrics: List[torchmetrics.Metric] = None,
@@ -91,7 +92,6 @@ class Trainer:
         log_level: int = logging.INFO,
     ):
         self.criterion = criterion
-        self.regularizer = regularizer
         self.callbacks_list = callbacks
         self.metrics_list = metrics
         self.accumulate_iter = accumulate_iter
@@ -100,7 +100,10 @@ class Trainer:
         self.log_level = log_level
 
         if accelerator is None:
-            self.accelerator = Accelerator(fp16=mixed_precision)
+            self.accelerator = Accelerator(
+                fp16=mixed_precision,
+                gradient_accumulation_steps=accumulate_iter,
+            )
 
         # wrap withing accelerate environment
         self.optimizer = self.accelerator.prepare_optimizer(optimizer)
@@ -113,8 +116,12 @@ class Trainer:
         self.callback_handler = CallbackHandler(
             callbacks_list=self.callbacks_list
         )
+        self.callback_handler.set_log_level(self.log_level)
+
         self.metrics_handler = MetricsHandler(
-            metrics_list=self.metrics_list, criterion=criterion
+            metrics_list=self.metrics_list,
+            criterion=criterion,
+            device=self.internal_state.get_single_param(ParamsDict.DEVICE),
         )
         self.gradient_clipping_algo_ = self._prepare_gradient_clipping()
 
@@ -124,8 +131,8 @@ class Trainer:
 
     def fit(
         self,
-        train_loader: torch.utils.data.dataloader.DataLoader,
-        val_loader: torch.utils.data.dataloader.DataLoader,
+        train_loader: DataLoader,
+        val_loader: DataLoader,
         epochs: int,
     ) -> dict:
         """Fit the model.
@@ -170,44 +177,34 @@ class Trainer:
 
         # track total training time
         total_start_time = time.perf_counter()
-        self.callback_handler.on_fit_start(
-            self.internal_state.get_state_dict()
-        )
+        self.callback_handler.on_fit_start(self.state_dict())
 
         # ---- fitting process ----
         epoch = initial_epoch
         stop = False
         while epoch <= epochs and not stop:
-            self.callback_handler.on_epoch_start(
-                self.internal_state.get_state_dict()
-            )
+            self.callback_handler.on_epoch_start(self.state_dict())
 
             # track epoch time
             epoch_start_time = time.perf_counter()
 
             # ------- train step -------
-            self.callback_handler.on_train_step_start(
-                self.internal_state.get_state_dict()
-            )
+            self.callback_handler.on_train_step_start(self.state_dict())
             tr_loss = self.train_step(train_loader)  # actual step
-            self.callback_handler.on_train_step_end(
-                self.internal_state.get_state_dict()
-            )
+            self.callback_handler.on_train_step_end(self.state_dict())
 
             # ------- validation step -------
-            self.callback_handler.on_validation_step_start(
-                self.internal_state.get_state_dict()
-            )
+            self.callback_handler.on_validation_step_start(self.state_dict())
             val_loss = self.validation_step(val_loader)
-            self.callback_handler.on_validation_step_end(
-                self.internal_state.get_state_dict()
-            )
+            self.callback_handler.on_validation_step_end(self.state_dict())
 
             # -------- update internal state to track training --------
             self.internal_state.update_lr_history(
                 value=self.optimizer.param_groups[0]["lr"], is_batch=False
             )
 
+            # synchronize before measuring time
+            self.accelerator.wait_for_everyone()
             epoch_time = time.perf_counter() - epoch_start_time
             self.internal_state.update_params(
                 **{
@@ -217,9 +214,7 @@ class Trainer:
                 }
             )
 
-            self.callback_handler.on_epoch_end(
-                self.internal_state.get_state_dict()
-            )
+            self.callback_handler.on_epoch_end(self.state_dict())
 
             epoch += 1
             stop = self.internal_state.get_single_param(
@@ -234,20 +229,88 @@ class Trainer:
         self.internal_state.update_params(
             **{ParamsDict.TOTAL_TIME: total_time}
         )
-        self.callback_handler.on_fit_end(self.internal_state.get_state_dict())
+        self.callback_handler.on_fit_end(self.state_dict())
 
-        # construct history object to return
-        history = {
-            ParamsDict.EPOCH_HISTORY: self.internal_state.get_single_param(
-                key=ParamsDict.EPOCH_HISTORY
-            ),
-            ParamsDict.BATCH_HISTORY: self.internal_state.get_single_param(
-                key=ParamsDict.BATCH_HISTORY
-            ),
-        }
+        history = self.get_history()
         return history
 
-    def _prepare_gradient_clipping(self):
+    @torch.no_grad()
+    def predict(
+        self,
+        X: Union[DataLoader, torch.Tensor, ndarray],
+        as_array=False,
+        dtype: str = "float",
+    ) -> Union[torch.Tensor, ndarray]:
+        """
+        Predict function.
+
+        Parameters
+        ----------
+        X : torch.Tensor or numpy.ndarray
+            Data to use to make inference.
+        as_array : bool, optional, default: False
+            Whether to output the predictions as a numpy.narray or not.
+        dtype : str, optional, default: "float"
+            Data type to cast input tensor to.
+
+        Returns
+        -------
+        predictions : torch.Tensor or numpy.ndarray
+            Predicted values.
+        """
+        if isinstance(X, DataLoader):
+            _tensor = self.__predict_loader(X)
+            predictions = getattr(_tensor, dtype)()
+
+        elif isinstance(X, ndarray):
+            _numpy = torch.from_numpy(X)
+            X = getattr(_numpy, dtype)()
+            predictions = self.__predict_tensor(X)
+
+        elif isinstance(X, torch.Tensor):
+            _tensor = self.__predict_tensor(X)
+            predictions = getattr(_tensor, dtype)()
+
+        if as_array:
+            return predictions.cpu().numpy()
+        else:
+            return predictions
+
+    def __predict_tensor(self, tensor: torch.Tensor) -> torch.Tensor:
+        """Make prediction for a given torch tensor.
+
+        The passed tensor will be moved to the device the accelerator chose at
+        the beginning of the training process.
+
+        Parameters
+        ----------
+        tensor : torch.Tensor
+            Tensor to use to make inference.
+
+        Returns
+        -------
+        torch.Tensor
+            Predicted values.
+        """
+        device = self.accelerator.device
+        tensor = tensor.to(device)
+        return self.model(tensor)
+
+    def __predict_loader(self, loader: DataLoader) -> torch.Tensor:
+        """Make inference prediction for a given torch.DataLoader.
+
+        Useful when the tensor of features does not fit into memory.
+        """
+        _predictions = []
+        loader = self.accelerator.prepare_data_loader(loader)
+        for idx, (feat, lab) in enumerate(loader):
+            _pred = self.model(feat)
+            _predictions.append(_pred)
+
+        predictions = torch.cat(_predictions)
+        return predictions
+
+    def _prepare_gradient_clipping(self) -> callable:
         """
         Identify the gradient clipping algorithm to use.
 
@@ -289,14 +352,12 @@ class Trainer:
         """
         self.accelerator.scaler = scaler
 
-    def reset_parameters(self, reset_model=False) -> None:
+    def reset_parameters(self, reset_model: bool = False) -> None:
         """
         Reset the internal dictionary that keeps track of the parameters state.
 
         Parameters
         ----------
-        reset_callbacks : bool, optional, default: False
-            True to reset the callbacks states as well as the Callback Handler.
         reset_model : bool, optional, default: False
             True to reset the model state.
         """
@@ -327,13 +388,10 @@ class Trainer:
 
         losses = []  # loss as mean of batch losses
         for batch_idx, batch in enumerate(loader):
-            self.callback_handler.on_train_batch_start(
-                self.internal_state.get_state_dict()
-            )
+            self.callback_handler.on_train_batch_start(self.state_dict())
             loss = self.batch_train_step(batch_index=batch_idx, batch=batch)
-            self.callback_handler.on_train_batch_end(
-                self.internal_state.get_state_dict()
-            )
+            self.callback_handler.on_train_batch_end(self.state_dict())
+
             losses.append(loss.item())
 
         # compute accumulated metrics (metric.compute())
@@ -375,31 +433,24 @@ class Trainer:
         loss : torch.Tensor
             Train loss graph.
         """
-        features, labels = batch
+        with self.accelerator.accumulate(self.model):
+            # assume last tensor in batch are labels
+            batch_len = len(batch)
+            features, labels = batch[: batch_len - 1], batch[-1]
 
-        # forward propagation
-        out = self.model(features)
-        loss = self.loss_step(out, labels) / self.accumulate_iter
+            # forward propagation
+            out = self.model(*features)
+            loss = self.loss_step(out, labels, is_validation=False)
 
-        # backpropagation
-        self.accelerator.backward(loss)
+            # backpropagation
+            self.accelerator.backward(loss)
 
-        # gradient clipping
-        if self.gradient_clipping_algo_ is not None:
-            self.gradient_clipping_algo_(
-                self.model.parameters(), **self.gradient_clipping_kwargs
-            )
+            # gradient clipping
+            if self.gradient_clipping_algo_ is not None:
+                self.gradient_clipping_algo_(
+                    self.model.parameters(), **self.gradient_clipping_kwargs
+                )
 
-        # gradient accumulation logic
-        batch_idx_plus = batch_index + 1
-        loader_len = self.internal_state.get_single_param(
-            key=ParamsDict.TRAIN_LOADER
-        )
-        if (
-            batch_idx_plus % self.accumulate_iter == 0
-            or batch_idx_plus == loader_len
-        ):
-            # update parameters and remove gradient
             self.optimizer.step()
             self.optimizer.zero_grad()
 
@@ -439,8 +490,11 @@ class Trainer:
     ) -> float:
         """Perform a validation step using the given dataloader.
 
-        A validation step consists of running and the model for each batch in
-        the given validation dataloader.
+        A validation step consists of running the model for each batch in the
+        given validation dataloader.
+
+        This method runs under the context of "torch.no_grad", which means
+        gradients won't be tracked.
 
         Parameters
         ----------
@@ -456,15 +510,11 @@ class Trainer:
 
         losses = []  # loss as mean of batch losses
         for batch_idx, batch in enumerate(loader):
-            self.callback_handler.on_validation_batch_start(
-                self.internal_state.get_state_dict()
-            )
+            self.callback_handler.on_validation_batch_start(self.state_dict())
             loss = self.batch_validation_step(
                 batch_index=batch_idx, batch=batch
             )
-            self.callback_handler.on_validation_batch_end(
-                self.internal_state.get_state_dict()
-            )
+            self.callback_handler.on_validation_batch_end(self.state_dict())
             losses.append(loss.item())
 
         # compute accumulated metrics
@@ -506,10 +556,12 @@ class Trainer:
         loss : torch.Tensor
             Validation loss graph.
         """
-        features, labels = batch
+        # assume last tensor in batch are labels
+        batch_len = len(batch)
+        features, labels = batch[: batch_len - 1], batch[-1]
 
-        out = self.model(features)
-        loss = self.loss_step(out, labels)
+        out = self.model(*features)
+        loss = self.loss_step(out, labels, is_validation=True)
 
         # compute metrics, needed for accumulated computation
         metrics_single = self.metrics_handler.single_batch_computation(
@@ -542,7 +594,7 @@ class Trainer:
         return loss
 
     def loss_step(
-        self, real: torch.Tensor, target: torch.Tensor
+        self, real: torch.Tensor, target: torch.Tensor, is_validation: bool
     ) -> torch.Tensor:
         """Compute loss graph.
 
@@ -561,20 +613,28 @@ class Trainer:
         loss : torch.Tensor
             Loss graph contained in a (1 x 1) torch.Tensor.
         """
-        loss = self.criterion(real, target)
+        self.callback_handler.on_loss_step_begin(self.state_dict())
+        with self.accelerator.autocast():
+            loss = self.criterion(real, target)
 
-        # apply regularization if any
-        if self.regularizer is not None:
-            penalty = self.regularizer(
-                self.model.named_parameters(), self.accelerator.device
-            )
-            loss += penalty.item()
+        # select key to update
+        if is_validation:
+            key = ParamsDict.BATCH_VAL_LOSS
+        else:
+            key = ParamsDict.BATCH_TRAIN_LOSS
+
+        # store loss graph
+        self.internal_state.update_params(**{key: loss})
+
+        # callback and retrieval in case loss was modified
+        self.callback_handler.on_loss_step_end(self.state_dict())
+        loss = self.internal_state.get_single_param(key)
 
         return loss
 
     def save_model(self, path):
         """
-        Convenient method to save the model ensuring the model is unwrapped and
+        Convenient method to save the model ensuring it is unwrapped and
         all processes are done.
 
         Parameters
@@ -588,7 +648,7 @@ class Trainer:
 
     def load_model(self, path):
         """
-        Convenient method to load the model ensuring the model is unwrapped.
+        Convenient method to load the model ensuring it is unwrapped.
 
         Parameters
         ----------
@@ -598,3 +658,36 @@ class Trainer:
         unwrapped_model = self.accelerator.unwrap_model(self.model)
         unwrapped_model.load_state_dict(torch.load(path))
         self.model = unwrapped_model
+
+    def state_dict(self) -> dict:
+        """Return current state dict.
+
+        The state dict will change as the training progresses.
+
+        Returns
+        -------
+        state : dict
+            A dictionary containing the current state of the trainer.
+        """
+        state = self.internal_state.get_state_dict()
+        return state
+
+    def get_history(self) -> dict:
+        """Return the training history.
+
+        The history will be created up to the last epoch.
+
+        Returns
+        -------
+        history : dict
+            Dictionary containing the history up to the last epoch.
+        """
+        history = {
+            ParamsDict.EPOCH_HISTORY: self.internal_state.get_single_param(
+                key=ParamsDict.EPOCH_HISTORY
+            ),
+            ParamsDict.BATCH_HISTORY: self.internal_state.get_single_param(
+                key=ParamsDict.BATCH_HISTORY
+            ),
+        }
+        return history

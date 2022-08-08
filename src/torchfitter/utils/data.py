@@ -1,12 +1,13 @@
 """
 Pool of utilities to wrap data.
 """
-import torch
-import numpy as np
 from typing import Tuple, Union
-from torch.utils.data import Dataset
-from torchfitter.utils.preprocessing import numpy_to_torch
 
+import numpy as np
+import torch
+from torch.utils.data import Dataset
+
+from torchfitter.utils.preprocessing import numpy_to_torch
 
 __all__ = [
     "DataWrapper",
@@ -62,12 +63,12 @@ class DataWrapper(Dataset):
         if isinstance(X, np.ndarray):
             X = numpy_to_torch(X, dtype_X)
         else:
-            X = X.float()
+            X = getattr(X, dtype_X)()
 
         if isinstance(y, np.ndarray):
             y = numpy_to_torch(y, dtype_y)
         else:
-            y = y.float()
+            y = getattr(X, dtype_y)()
 
         return X, y
 

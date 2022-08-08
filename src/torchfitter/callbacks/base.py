@@ -1,18 +1,29 @@
 """ Base callbacks class """
 import logging
+from abc import ABC
+from typing import List
+
 from torchfitter.utils.convenience import get_logger
 
 __all__ = ["Callback", "CallbackHandler"]
 
 
-class Callback:
-    """
-    Base callbacks class.
+class Callback(ABC):
+    """Base callbacks class.
+
+    A callback allows to interact with the model along various relevant points
+    during the training process. Each point is called hook, and each method of
+    a callback allows to "attach" functionality to that particular hook.
+
+    For example, if one were to run a method at the start of the fitting
+    process he or she would pass a callback with the desired functionality
+    filling the method "on_fit_start".
 
     Attributes
     ----------
     logger : logging.Logger
-        Callback logger. You can set the logging level with the 'set_log_level'.
+        Callback logger. You can set the logging level with the
+        'set_log_level'.
 
     References
     ----------
@@ -21,9 +32,9 @@ class Callback:
     """
 
     def __init__(self):
-        self.log_name = 'Callback'
-        self.logger = get_logger(name=self.log_name)
-        level = self.logger.level
+        self.log_name: str = "Callback"
+        self.logger: logging.Logger = get_logger(name=self.log_name)
+        level: int = self.logger.level
         logging.basicConfig(level=level)
 
     def set_log_level(self, log_level) -> None:
@@ -222,6 +233,32 @@ class Callback:
         """
         pass
 
+    def on_loss_step_begin(self, params_dict: dict) -> None:
+        """Called at the start of the loss step.
+
+        Subclasses should override for any actions to run. The trainer ignores
+        any returned values from this function.
+
+        Parameters
+        ----------
+        params_dict : dict
+            Dictionary containing the parameters of the training process.
+        """
+        pass
+
+    def on_loss_step_end(self, params_dict: dict) -> None:
+        """Called at the end of the loss step.
+
+        Subclasses should override for any actions to run. The trainer ignores
+        any returned values from this function.
+
+        Parameters
+        ----------
+        params_dict : dict
+            Dictionary containing the parameters of the training process.
+        """
+        pass
+
 
 class CallbackHandler(Callback):
     """Trainer callback handler.
@@ -236,16 +273,16 @@ class CallbackHandler(Callback):
     """
 
     def __init__(self, callbacks_list):
-        self.handle_callbacks = True
+        self.handle_callbacks: bool = True
 
         if callbacks_list is None:
             self.handle_callbacks = False
         elif not isinstance(callbacks_list, list):
             raise TypeError("Callbacks must be a list of callbacks")
 
-        self.callbacks_list = callbacks_list
+        self.callbacks_list: List[Callback] = callbacks_list
 
-    def set_log_level(self, log_level) -> None:
+    def set_log_level(self, log_level: int) -> None:
         """
         Set the logging level for all callbacks contained in this instance of
         CallbacksHandler.
@@ -454,3 +491,33 @@ class CallbackHandler(Callback):
         if self.handle_callbacks:
             for callback in self.callbacks_list:
                 callback.on_fit_end(params_dict)
+
+    def on_loss_step_begin(self, params_dict: dict) -> None:
+        """Called at the start of the loss step.
+
+        Call this method for all given callbacks list. Any returned values will
+        be ignored by the trainer.
+
+        Parameters
+        ----------
+        params_dict : dict
+            Dictionary containing the parameters of the training process.
+        """
+        if self.handle_callbacks:
+            for callback in self.callbacks_list:
+                callback.on_loss_step_begin(params_dict)
+
+    def on_loss_step_end(self, params_dict: dict) -> None:
+        """Called at the end of the loss step.
+
+        Call this method for all given callbacks list. Any returned values will
+        be ignored by the trainer.
+
+        Parameters
+        ----------
+        params_dict : dict
+            Dictionary containing the parameters of the training process.
+        """
+        if self.handle_callbacks:
+            for callback in self.callbacks_list:
+                callback.on_loss_step_end(params_dict)
