@@ -21,9 +21,6 @@ The library also provides a callbacks API that can be used to interact with
 the model during the training process, as well as a set of basic regularization
 procedures.
 
-Additionally, you will find the `Manager` class which allows you to run 
-multiple experiments for different random seeds.
-
 ## Installation
 **Normal user**
 ```bash
@@ -129,40 +126,6 @@ trainer = Trainer(
     **kwargs
 )
 ```
-
-
-## Regularization
-`TorchFitter` includes regularization algorithms but you can also create your
-own procedures. To create your own algorithms you just:
-1. Inherit from `RegularizerBase` and call the `super` operator appropiately.
-2. Implement the procedure in the `compute_penalty` method.
-
-Here's an example implementing L1 from scratch:
-
-```python
-import torch
-from torchfitter.regularization.base import RegularizerBase
-
-
-class L1Regularization(RegularizerBase):
-    def __init__(self, regularization_rate, biases=False):
-        super(L1Regularization, self).__init__(regularization_rate, biases)
-
-    def compute_penalty(self, named_parameters, device):
-        # Initialize with tensor, cannot be scalar
-        penalty_term = torch.zeros(1, 1, requires_grad=True).to(device)
-
-        for name, param in named_parameters:
-            if not self.biases and name.endswith("bias"):
-                continue
-            
-            penalty_term = penalty_term + param.norm(p=1)
-
-        return self.rate * penalty_term
-```
-
-Notice how the `penalty_term` is moved to the given `device`. This is necessary
-in order to avoid operations with tensors stored at different devices.
 
 ## Callbacks
 Callbacks allow you to interact with the model during the fitting process. They

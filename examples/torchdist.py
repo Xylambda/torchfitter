@@ -63,12 +63,12 @@ class DeepNormal(nn.Module):
         shared = self.shared_layer(x)
         
         # Parametrization of the mean
-        μ = self.mean_layer(shared)
+        mean = self.mean_layer(shared)
         
         # Parametrization of the standard deviation
-        σ = self.std_layer(shared)
+        std = self.std_layer(shared)
         
-        return torch.distributions.Normal(μ, σ)
+        return torch.distributions.Normal(mean, std)
 
 
 class NLLLoss(nn.Module):

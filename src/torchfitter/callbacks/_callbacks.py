@@ -70,7 +70,7 @@ class EarlyStopping(Callback):
                     model.load_state_dict(best_params)
                     self.logger.info("Best observed parameters loaded.")
 
-    def on_fit_end(self, params_dict: None) -> None:
+    def on_fit_end(self, params_dict: dict) -> None:
         if self.stopped_epoch > 0:
             self.logger.info(
                 f"Early stopping applied at epoch: {self.stopped_epoch}"

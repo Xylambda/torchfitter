@@ -116,6 +116,8 @@ class Trainer:
         self.callback_handler = CallbackHandler(
             callbacks_list=self.callbacks_list
         )
+        self.callback_handler.set_log_level(self.log_level)
+
         self.metrics_handler = MetricsHandler(
             metrics_list=self.metrics_list,
             criterion=criterion,

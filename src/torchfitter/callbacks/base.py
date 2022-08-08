@@ -11,9 +11,9 @@ __all__ = ["Callback", "CallbackHandler"]
 class Callback(ABC):
     """Base callbacks class.
 
-    A callbacks allows to interact with the model along various relevant points
+    A callback allows to interact with the model along various relevant points
     during the training process. Each point is called hook, and each method of
-    a callbacks allows to "attach" functionality to that particular hook.
+    a callback allows to "attach" functionality to that particular hook.
 
     For example, if one were to run a method at the start of the fitting
     process he or she would pass a callback with the desired functionality

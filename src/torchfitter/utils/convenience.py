@@ -7,6 +7,8 @@ import torch
 __all__ = [
     "check_model_on_cuda",
     "get_logger",
+    "freeze_model",
+    "unfreeze_model",
 ]
 
 

@@ -22,7 +22,7 @@ from torchfitter.callbacks import (
     LoggerCallback,
     RichProgressBar,
     LearningRateScheduler,
-    StochasticWeightAveraging
+    StochasticWeightAveraging,
 )
 
 from torchfitter.callbacks.base import CallbackHandler, Callback
