@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## [4.2.0] - 2022-08-08
+
+## Added
+- Add `torch.ditribution` example, with code taken from [Romain Strock](https://romainstrock.com/blog/modeling-uncertainty-with-pytorch.html).
+- Add `predict` method to `Trainer`. #38
+- Add functions to freeze and unfreeze model. #43
+- Add function to transform dataset into time series dataset.
+
+## Fixed
+- Metrics are now moved to the execution device #41.
+- Log level is now used in the Trainer. #40
+- `LearningRateScheduler` now does not crash in first epoch when `on_train` is False. #36
+
+## Changed
+- Make regularization part of the callbacks system. #37 
+- Divide utils into three submodules: `convenience`,`preprocessing` and `data`.
+- Update requirements to avoid conflicts.
+- Update some tests.
+
+## Removed
+
+- Remove old regularization module and all related code.
+
+
 ## [4.1.2] - 2021-12-24
 
 ### Fixed
@@ -88,6 +112,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 - Update tests with new testing methods.
 - Make some method on Trainer and Manager private.
 
+
 ## [3.0.0] - 2021-07-27
 
 ### Fixed
@@ -113,6 +138,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 - Add testing utility to check gradients: `compute_forward_gradient`.
 - Add more functions to `utils`: `FastTensorDataLoader`, `check_model_on_cuda`.
 
+
 ## [2.0.2] - 2021-05-10
 
 ### Fixed
@@ -125,6 +151,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 - Change `_train` in favour of `train_step`.
 - Change `_validate` in favour of `validation_step`.
 - Update tests to be correct.
+
 
 ## [2.0.1] - 2021-04-29
 
