@@ -77,11 +77,11 @@ callbacks and pass them to the trainer as a list.
 import torch.nn as nn
 import torch.optim as optim
 from torchfitter.trainer import Trainer
-from torchfitter.regularization import L1Regularization
 from torchfitter.callbacks import (
     LoggerCallback,
     EarlyStopping,
-    LearningRateScheduler
+    LearningRateScheduler,
+    L1Regularization,
 )
 
 model = nn.Linear(in_features=1, out_features=1)

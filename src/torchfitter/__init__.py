@@ -1,15 +1,7 @@
 """ PyTorch models fitting package. """
 
 # relative subpackages import
-from . import (
-    callbacks,
-    conventions,
-    io,
-    manager,
-    testing,
-    trainer,
-    utils,
-)
+from . import callbacks, conventions, io, manager, testing, trainer, utils
 
 __all__ = [
     "io",

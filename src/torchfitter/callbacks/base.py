@@ -3,7 +3,7 @@ import logging
 from abc import ABC
 from typing import List
 
-from torchfitter.utils.convenience import get_logger
+from accelerate.logging import get_logger
 
 __all__ = ["Callback", "CallbackHandler"]
 
@@ -34,20 +34,14 @@ class Callback(ABC):
     def __init__(self):
         self.log_name: str = "Callback"
         self.logger: logging.Logger = get_logger(name=self.log_name)
-        level: int = self.logger.level
+
+    def set_log_level(self, level):
+        # infor level logging
         logging.basicConfig(level=level)
+        self.logger.setLevel(level)
 
-    def set_log_level(self, log_level) -> None:
-        """
-        Set the logging level this callback instance.
-
-        Parameters
-        ----------
-        log_level : int
-            Logging level.
-        """
-        self.logger.setLevel(level=log_level)
-        logging.basicConfig(level=log_level)
+    def set_log_name(self, name):
+        self.logger.logger.name = name
 
     def on_train_step_start(self, params_dict: dict) -> None:
         """Called at the start of a training step.
@@ -281,20 +275,6 @@ class CallbackHandler(Callback):
             raise TypeError("Callbacks must be a list of callbacks")
 
         self.callbacks_list: List[Callback] = callbacks_list
-
-    def set_log_level(self, log_level: int) -> None:
-        """
-        Set the logging level for all callbacks contained in this instance of
-        CallbacksHandler.
-
-        Parameters
-        ----------
-        log_level : int
-            Logging level.
-        """
-        if self.handle_callbacks:
-            for callback in self.callbacks_list:
-                callback.set_log_level(log_level=log_level)
 
     def on_train_step_start(self, params_dict: dict) -> None:
         """Called at the start of a training step.
