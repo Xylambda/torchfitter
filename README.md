@@ -87,7 +87,7 @@ from torchfitter.callbacks import (
 model = nn.Linear(in_features=1, out_features=1)
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters())
-regularizer = L1Regularization(regularization_rate=0.01, biases=False)
+l1_reg = L1Regularization(regularization_rate=0.01, biases=False)
 
 # callbacks
 logger = LoggerCallback(update_step=50)
@@ -99,13 +99,12 @@ scheduler = LearningRateScheduler(
 trainer = Trainer(
     model=model, 
     criterion=criterion,
-    optimizer=optimizer, 
-    regularizer=regularizer,
+    optimizer=optimizer,
     mixed_precision=True,
     accumulate_iter=4, # accumulate gradient every 4 iterations,
     gradient_clipping='norm',
     gradient_clipping_kwrgs={'max_norm': 1.0, 'norm_type': 2.0},
-    callbacks=[logger, early_stopping, scheduler]
+    callbacks=[l1_reg, scheduler, early_stopping, logger]
 )
 
 history = trainer.fit(train_loader, val_loader, epochs=1000)

@@ -219,7 +219,7 @@ def tabular_to_sliding_dataset(
     * Allow selecting the target column.
     """
 
-    def get_train_and_test(array, n_past, n_future):
+    def get_features_and_labels(array, n_past, n_future):
         """
         Convenient sub-function that wraps to functionality to
         create a rolling view and select the past as features
@@ -253,7 +253,7 @@ def tabular_to_sliding_dataset(
     # get a rolling view of each data chunk
     output = []
     for chunk in [train, validation, test]:
-        X, y = get_train_and_test(
+        X, y = get_features_and_labels(
             array=chunk, n_past=n_past, n_future=n_future
         )
 

@@ -132,10 +132,13 @@ class RichProgressBar(Callback):
         val_loader = params_dict[ParamsDict.VAL_LOADER]
         epoch = params_dict[ParamsDict.EPOCH_NUMBER]
         total_epochs = params_dict[ParamsDict.TOTAL_EPOCHS]
+        accelerator = params_dict[ParamsDict.ACCELERATOR]
 
         # compute number of batches
         n_elements = len(train_loader) + len(val_loader)
 
+        # disable if is not the main process
+        disable = not accelerator.is_local_main_process
         if epoch % self.display_step == 0 or epoch == 1:
             self.progress_bar = Progress(
                 "[progress.description]{task.description}",
@@ -145,6 +148,7 @@ class RichProgressBar(Callback):
                 "[progress.percentage]{task.percentage:>3.0f}%",
                 "•",
                 TimeRemainingColumn(),
+                disable=disable,
             )
 
             self.epoch_task = self.progress_bar.add_task(

@@ -19,6 +19,11 @@ class Trainer:
     This class leverages the power of 'accelerate' to handle the device
     management and the model optimization.
 
+    To perform the forward and backward steps the Trainer assumes a batch of
+    tensors is passed where the last tensor contains the labels and all others
+    contain the features, implicitly assuming the model can handle multiple
+    inputs if needed.
+
     The trainer tracks its state using a
     'torchfitter.trainer.TrainerInternalState' object. You can also pass a list
     of callbacks and/or metrics to the trainer. The callbacks will be runned
@@ -27,7 +32,8 @@ class Trainer:
 
     The callbacks will run in the passed order. Meaning, if a callback modifies
     the loss value after the logging has been performed, the new loss value
-    won't be showed in the logging process.
+    won't be showed in the logging process. This is a bug and will be fixed in
+    future versions.
 
     Parameters
     ----------
@@ -45,10 +51,12 @@ class Trainer:
         flag passed with the accelerate.launch command. 'fp16' requires pytorch
         1.6 or higher. 'bf16' requires pytorch 1.10 or higher.
     callbacks : list of torchfitter.callback.Callback
-        Callbacks to use during the training process.
+        Callbacks to use during the training process. They will be run in the
+        same orther than they are passed.
     metrics : list of torchmetrics.Metric, optional, default: None
-        List of metrics to compute in the fitting process. The metrics will be
-        registered in the internal state using the name of the class. For
+        List of metrics to compute in the fitting process. Any arbitrary metric
+        can be used as long as it uses the `torchmetrics` API. The metrics will
+        be registered in the internal state using the name of the class. For
         example, passing `[MeanSquaredError()]` will be registered as
         `MeanSquaredError`.
     accelerator : accelerate.Accelerator
@@ -59,7 +67,7 @@ class Trainer:
         value does not accumulate the gradients. If an instance of Accelerator
         is passed to the trainer, this parameter will be ignored.
     gradient_clipping : {None, 'norm', 'value'}
-        Norm gradient clipping of value gradient clipping. If None, gradient
+        Norm gradient clipping or value gradient clipping. If None, gradient
         clipping won't be applied.
     gradient_clipping_kwargs : dict, optional, default: None
         Dictionary containing keyword arguments for gradient clipping
@@ -405,8 +413,11 @@ class Trainer:
         batch_index,
         batch: Tuple[torch.Tensor, torch.Tensor],
     ) -> torch.Tensor:
-        """
-        Define the computations to perform on each batch for the training loop.
+        """Define the computations to perform on each batch for the training
+        loop.
+
+        This step assumes the features are contained in all tensors in the
+        batch but the last, which is assumed to contain the labels.
 
         Parameters
         ----------
@@ -527,9 +538,11 @@ class Trainer:
     def batch_validation_step(
         self, batch_index, batch: Tuple[torch.Tensor, torch.Tensor]
     ) -> torch.Tensor:
-        """
-        Define the computations to perform on each batch for the validation
+        """Define the computations to perform on each batch for the validation
         loop.
+
+        This step assumes the features are contained in all tensors in the
+        batch but the last, which is assumed to contain the labels.
 
         Parameters
         ----------
