@@ -221,9 +221,8 @@ def tabular_to_sliding_dataset(
 
     def get_features_and_labels(array, n_past, n_future):
         """
-        Convenient sub-function that wraps to functionality to
-        create a rolling view and select the past as features
-        and the future as labels.
+        Convenient sub-function that wraps the functionality to create a
+        rolling view and select the past as features and the future as labels.
         """
         window_length = n_past + n_future
         roll_view = np.lib.stride_tricks.sliding_window_view(

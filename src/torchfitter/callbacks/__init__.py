@@ -6,14 +6,13 @@ from torchfitter.callbacks.regularization import (
     L1Regularization,
     L2Regularization,
 )
-
-from . import base
-from ._callbacks import (
-    EarlyStopping,
-    GPUStats,
+from torchfitter.callbacks.scheduling import (
     LearningRateScheduler,
     StochasticWeightAveraging,
 )
+
+from . import base
+from ._callbacks import EarlyStopping, GPUStats
 
 __all__ = [
     "base",
