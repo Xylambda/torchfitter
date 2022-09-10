@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## [4.2.1] - 2022-09-10
+
+## Changed
+- Callbacks have been reorganized in folders.
+- Update requirements.
+- Update `gh-pages.yml`.
+- Update `README.md`
+- Update `mixed_precision` parameter and usage.
+
+## Fixed
+- Progress bar will only be created under the main process.
+- Logging now is handled by `accelerate` library.
+
+
 ## [4.2.0] - 2022-08-08
 
 ## Added

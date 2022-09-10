@@ -1,17 +1,18 @@
 """ Abstractions to interact with models. """
 
-from . import base
-from ._callbacks import (
-    EarlyStopping,
-    GPUStats,
-    LearningRateScheduler,
-    LoggerCallback,
-    RichProgressBar,
-    StochasticWeightAveraging,
+from torchfitter.callbacks.progress import LoggerCallback, RichProgressBar
+from torchfitter.callbacks.regularization import (
+    ElasticNetRegularization,
     L1Regularization,
     L2Regularization,
-    ElasticNetRegularization,
 )
+from torchfitter.callbacks.scheduling import (
+    LearningRateScheduler,
+    StochasticWeightAveraging,
+)
+
+from . import base
+from ._callbacks import EarlyStopping, GPUStats
 
 __all__ = [
     "base",

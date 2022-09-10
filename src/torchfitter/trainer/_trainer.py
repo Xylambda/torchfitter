@@ -1,4 +1,3 @@
-import logging
 import statistics
 import time
 from typing import List, Tuple, Union
@@ -20,11 +19,21 @@ class Trainer:
     This class leverages the power of 'accelerate' to handle the device
     management and the model optimization.
 
+    To perform the forward and backward steps the Trainer assumes a batch of
+    tensors is passed where the last tensor contains the labels and all others
+    contain the features, implicitly assuming the model can handle multiple
+    inputs if needed.
+
     The trainer tracks its state using a
     'torchfitter.trainer.TrainerInternalState' object. You can also pass a list
     of callbacks and/or metrics to the trainer. The callbacks will be runned
     at different points depending on the methods that were filled. The metrics
     will be runned in the train and validation steps.
+
+    The callbacks will run in the passed order. Meaning, if a callback modifies
+    the loss value after the logging has been performed, the new loss value
+    won't be showed in the logging process. This is a bug and will be fixed in
+    future versions.
 
     Parameters
     ----------
@@ -34,16 +43,20 @@ class Trainer:
         Loss function criterion used to optimize the model.
     optimizer : torch.optim
         Optimizer to perform the parameters update.
-    mixed_precision : bool, optional, default: False
-        Whether to use mixed precision training or not. If True, the forward
-        pass will be computed under the context of `torch.cuda.amp.autocast`
-        and the backpropagation and gradient descent steps will be computed
-        using `torch.cuda.amp.GradScaler`.
+    mixed_precision : str, optional, {'no', 'fp16', 'bf16'}, default: None
+        Whether or not to use mixed precision training (fp16 or bfloat16). From
+        Accelerate DOC: choose from 'no', 'fp16', 'bf16'. Will default to the
+        value in the environment variable MIXED_PRECISION, which will use the
+        default value in the accelerate config of the current system or the
+        flag passed with the accelerate.launch command. 'fp16' requires pytorch
+        1.6 or higher. 'bf16' requires pytorch 1.10 or higher.
     callbacks : list of torchfitter.callback.Callback
-        Callbacks to use during the training process.
+        Callbacks to use during the training process. They will be run in the
+        same orther than they are passed.
     metrics : list of torchmetrics.Metric, optional, default: None
-        List of metrics to compute in the fitting process. The metrics will be
-        registered in the internal state using the name of the class. For
+        List of metrics to compute in the fitting process. Any arbitrary metric
+        can be used as long as it uses the `torchmetrics` API. The metrics will
+        be registered in the internal state using the name of the class. For
         example, passing `[MeanSquaredError()]` will be registered as
         `MeanSquaredError`.
     accelerator : accelerate.Accelerator
@@ -54,15 +67,13 @@ class Trainer:
         value does not accumulate the gradients. If an instance of Accelerator
         is passed to the trainer, this parameter will be ignored.
     gradient_clipping : {None, 'norm', 'value'}
-        Norm gradient clipping of value gradient clipping. If None, gradient
+        Norm gradient clipping or value gradient clipping. If None, gradient
         clipping won't be applied.
     gradient_clipping_kwargs : dict, optional, default: None
         Dictionary containing keyword arguments for gradient clipping
         algorithm. Example: {max_norm=1, norm_type=2}. See
         https://huggingface.co/docs/accelerate/accelerator.html for more
         information.
-    log_level : int, optional, default: logging.INFO
-        Logging level.
 
     Attributes
     ----------
@@ -75,6 +86,9 @@ class Trainer:
     gradient_clipping_algo_ : callable
         Gradient clipping algorithm or None.
 
+    TODO
+    ----
+    - Make callbacks with priority and sort them at the beginning.
     """
 
     def __init__(
@@ -82,14 +96,13 @@ class Trainer:
         model: torch.nn.Module,
         criterion: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
-        mixed_precision: bool = False,
+        mixed_precision: str = None,
         callbacks: List[Callback] = None,
         metrics: List[torchmetrics.Metric] = None,
         accelerator: Accelerator = None,
         accumulate_iter: int = 1,
         gradient_clipping: str = None,
         gradient_clipping_kwargs: dict = None,
-        log_level: int = logging.INFO,
     ):
         self.criterion = criterion
         self.callbacks_list = callbacks
@@ -97,12 +110,12 @@ class Trainer:
         self.accumulate_iter = accumulate_iter
         self.gradient_clipping = gradient_clipping
         self.gradient_clipping_kwargs = gradient_clipping_kwargs
-        self.log_level = log_level
 
         if accelerator is None:
             self.accelerator = Accelerator(
                 fp16=mixed_precision,
                 gradient_accumulation_steps=accumulate_iter,
+                step_scheduler_with_optimizer=True,
             )
 
         # wrap withing accelerate environment
@@ -116,7 +129,6 @@ class Trainer:
         self.callback_handler = CallbackHandler(
             callbacks_list=self.callbacks_list
         )
-        self.callback_handler.set_log_level(self.log_level)
 
         self.metrics_handler = MetricsHandler(
             metrics_list=self.metrics_list,
@@ -335,23 +347,6 @@ class Trainer:
             )
         return algo
 
-    def set_scaler(
-        self, scaler: torch.cuda.amp.grad_scaler.GradScaler
-    ) -> None:
-        """Set the gradient scaler used in mixed precision.
-
-        Since the trainer relies on accelerate.Accelator class for the fitting
-        process the scaler is created inside the aforementioned. With this
-        function you can set the scaler to be an instance with the desired
-        argument values.
-
-        Parameters
-        ----------
-        scaler : torch.cuda.amp.grad_scaler.GradScaler
-            The gradient scaler you want to use.
-        """
-        self.accelerator.scaler = scaler
-
     def reset_parameters(self, reset_model: bool = False) -> None:
         """
         Reset the internal dictionary that keeps track of the parameters state.
@@ -418,8 +413,11 @@ class Trainer:
         batch_index,
         batch: Tuple[torch.Tensor, torch.Tensor],
     ) -> torch.Tensor:
-        """
-        Define the computations to perform on each batch for the training loop.
+        """Define the computations to perform on each batch for the training
+        loop.
+
+        This step assumes the features are contained in all tensors in the
+        batch but the last, which is assumed to contain the labels.
 
         Parameters
         ----------
@@ -540,9 +538,11 @@ class Trainer:
     def batch_validation_step(
         self, batch_index, batch: Tuple[torch.Tensor, torch.Tensor]
     ) -> torch.Tensor:
-        """
-        Define the computations to perform on each batch for the validation
+        """Define the computations to perform on each batch for the validation
         loop.
+
+        This step assumes the features are contained in all tensors in the
+        batch but the last, which is assumed to contain the labels.
 
         Parameters
         ----------
