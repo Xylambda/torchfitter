@@ -113,10 +113,12 @@ class Trainer:
 
         if accelerator is None:
             self.accelerator = Accelerator(
-                fp16=mixed_precision,
+                mixed_precision=mixed_precision,
                 gradient_accumulation_steps=accumulate_iter,
                 step_scheduler_with_optimizer=True,
             )
+        else:
+            self.accelerator = accelerator
 
         # wrap withing accelerate environment
         self.optimizer = self.accelerator.prepare_optimizer(optimizer)
