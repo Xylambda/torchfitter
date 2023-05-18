@@ -10,14 +10,14 @@ jobs:
   build_docs_job:
     runs-on: ubuntu-latest
     env:
-      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      GITHUB_PAT: ${{ secrets.PUSH_TOKEN }}
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2.3.4
+        uses: actions/checkout@v3
 
       - name: Python Set Up
-        uses: actions/setup-python@v2.2.1
+        uses: actions/setup-python@master
         with:
           python-version: 3.8
 
@@ -25,31 +25,28 @@ jobs:
         run: |
           # install pip=>20.1 to use "pip cache dir"
           python3 -m pip install --upgrade pip
-
       - name: Install dependencies
         run: |
           python3 -m pip install . -r requirements-dev.txt
-
       - name: Make Sphinx docs
         run: |
           make -C docs clean
           make -C docs html
-
       - name: Init new repository in dist folder and commit generated files
         run: |
           cd docs/build/html/
           git init
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git remote add origin https://${{ secrets.PUSH_TOKEN }}@github.com/Xylambda/torchfitter
+          git config --global --add safe.directory /github/workspace/docs/build/html
           touch .nojekyll
           git add -A
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git commit -m 'deploy'
-
       - name: Force push to destination branch
-        uses: ad-m/github-push-action@v0.5.0
+        uses: ad-m/github-push-action@master
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}$
+          github_token: ${{ secrets.PUSH_TOKEN }}
           branch: gh-pages
           force: true
           directory: ./docs/build/html

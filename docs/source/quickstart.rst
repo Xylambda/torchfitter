@@ -41,13 +41,6 @@ own callbacks (we will cover this later).
 >>> logger = LoggerCallback(update_step=50)
 >>> early_stopping = EarlyStopping(patience=50, load_best=True, path='checkpoint.pt')
 
-Another feature we can use is regularization. Currently, L1 and L2 are 
-supported, and use them is as easy as simply create them and pass the instances
-to the trainer object as we will see in a moment.
-
->>> from torchfitter.regularization import L1Regularization
->>> regularizer = L1Regularization(regularization_rate=0.01, biases=False)
-
 Now we can create the class that will handle the trainer and pass all the 
 configuration we have been creating:
 
@@ -56,7 +49,6 @@ configuration we have been creating:
 >>> ... model=model, 
 >>> ... criterion=criterion,
 >>> ... optimizer=optimizer, 
->>> ... regularizer=regularizer,
 >>> ... device=device,
 >>> ... callbacks=[logger, early_stopping],
 >>> ... mixed_precision=True, # only works with GPU
@@ -67,7 +59,15 @@ Once the trainer is created, we only need to call `fit` to optimize our model:
 >>> history = trainer.fit(train_loader, val_loader, epochs=1000)
 
 The training information you get will depend on your callbacks. After the 
-optimization process ends the model is ready to use.
+optimization process ends the model is (hopefully) ready to use for inference.
+
+`torchfitter` lets you do inference by calling the `predict` method:
+
+>>> y_pred = trainer.predict(X_test, as_array=True)
+
+Use `as_array=True` if you want the trainer to return a NumPy array. Notice
+that you can pass a loader to the predict method too in case the Tensor is too
+heavy.
 
 
 Callbacks System
@@ -114,168 +114,3 @@ parameters:
 
 >>> from torchfitter.conventions import ParamsDict
 >>> print(ParamsDict.__doc__)
-
-
-Regularization
-##############
-
-The regularization system works like the callbacks system: `torchfitter` 
-provides a base class that must be subclassed. Then, the method `compute_penalty`
-must be filled with your algorithm. An example implementing L1
-
-.. code-block:: python
-
-    import torch
-    from torchfitter.regularization.base import RegularizerBase
-
-
-    class L1Regularization(RegularizerBase):
-        def __init__(self, regularization_rate, biases=False):
-            super(L1Regularization, self).__init__(regularization_rate, biases)
-
-        def compute_penalty(self, named_parameters, device):
-            # Initialize with tensor, cannot be scalar
-            penalty_term = torch.zeros(1, 1, requires_grad=True).to(device)
-
-            for name, param in named_parameters:
-                if not self.biases and name.endswith("bias"):
-                    pass
-                else:
-                    penalty_term = penalty_term + param.norm(p=1)
-
-            return self.rate * penalty_term
-
-Notice how the `penalty_term` is moved to the given device to avoid problems 
-with tensors stored at different devices.
-
-
-Running multiple experiments
-############################
-
-With `torchfitter` you can run multiple experiments sequentially for different
-seeds. In order to perform various experiments, you must define an experiment
-inside a function and pass it to the `Manager` class. 
-
-The function must have 2 arguments: `seed` and `folder_name` that you can use 
-to save the experiment.
-
-Let's see an example:
-
-.. code-block:: python
-
-    import os
-    import torch
-    import numpy as np
-    import torch.nn as nn
-    import torch.optim as optim
-    import matplotlib.pyplot as plt
-
-    from pathlib import Path
-    from torch.utils.data import DataLoader
-    from sklearn.model_selection import train_test_split
-
-    from torchfitter import io
-    from torchfitter.trainer import Trainer
-    from torchfitter.manager import Manager
-    from torchfitter.utils import DataWrapper
-    from torchfitter.regularization import L1Regularization
-    from torchfitter.callbacks import (
-        LoggerCallback, 
-        EarlyStopping, 
-        LearningRateScheduler
-    )
-
-    DATA_PATH = <path_to_data>
-
-    # define experiment function
-    def experiment_func(seed, folder_name):
-        subfolder = folder_name / f"experiment_{seed}"
-        
-        if f"experiment_{seed}" not in os.listdir(folder_name):
-            os.mkdir(subfolder)
-        
-        # ---------------------------------------------------------------------
-        # split
-        X = np.load(DATA_PATH / "features.npy")
-        y = np.load(DATA_PATH / "labels.npy")
-        y = y.reshape(-1,1)
-        
-        # simplest case of cross-validation
-        X_train, X_val, y_train, y_val = train_test_split(
-            X, 
-            y, 
-            test_size=0.33, 
-            random_state=42
-        )
-        
-        # wrap data in Dataset
-        train_wrapper = DataWrapper(
-            X_train, 
-            y_train, 
-            dtype_X='float', 
-            dtype_y='float'
-        )
-        val_wrapper = DataWrapper(
-            X_val,
-            y_val,
-            dtype_X='float',
-            dtype_y='float'
-        )
-
-        # torch Loaders
-        train_loader = DataLoader(train_wrapper, batch_size=64, pin_memory=True)
-        val_loader = DataLoader(val_wrapper, batch_size=64, pin_memory=True)
-
-        # ---------------------------------------------------------------------
-        # model creatiom
-        model = nn.Linear(in_features=1, out_features=1)
-        
-        # optimization settings 
-        regularizer = L1Regularization(regularization_rate=0.01, biases=False)
-        criterion = nn.MSELoss()
-        optimizer = optim.Adam(model.parameters(), lr=0.005)
-        
-        # ---------------------------------------------------------------------
-        callbacks = [
-            LoggerCallback(update_step=100),
-            EarlyStopping(patience=50, load_best=False, path=subfolder / 'checkpoint.pt'),
-            LearningRateScheduler(
-                scheduler=optim.lr_scheduler.StepLR(optimizer, step_size=500, gamma=0.9)
-            )
-        ]
-
-        # trainer
-        trainer = Trainer(
-            model=model, 
-            criterion=criterion,
-            optimizer=optimizer, 
-            regularizer=regularizer,
-            callbacks=callbacks,
-        )
-        
-        # run training
-        history = trainer.fit(train_loader, val_loader, 5000, disable_pbar=True)
-        
-        # ---------------------------------------------------------------------
-        # model state
-        torch.save(trainer.model.state_dict(), subfolder / 'model_state.pt')
-        
-        # optim state
-        torch.save(trainer.optimizer.state_dict(), subfolder / 'optim_state.pt')
-        
-        # history
-        io.save_pickle(
-            obj=history,
-            path=subfolder / 'history.pkl'
-        )
-
-    # define random seeds
-    seeds = (0, 5, 10)
-    folder = Path('experiments')
-
-    manager = Manager(
-        seeds=seeds,
-        folder_name=folder
-    )
-    # run experiments
-    manager.run_experiments(experiment_func=experiment_func)
