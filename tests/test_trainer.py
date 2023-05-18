@@ -70,7 +70,7 @@ def test_trainer(train_config):
         model=model,
         criterion=criterion,
         optimizer=optimizer,
-        mixed_precision=False,
+        mixed_precision="no",
     )
     trainer.reset_parameters(reset_model=True)
 
