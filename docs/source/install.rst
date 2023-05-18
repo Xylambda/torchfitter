@@ -6,8 +6,7 @@ Normal User
 ###########
 
 .. code-block:: bash
-    git clone https://github.com/Xylambda/torchfitter.git
-    pip install torchfitter/.
+    pip install torchfitter
 
 
 Developer
